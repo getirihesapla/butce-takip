@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pro Finans Takip | Gelir & Gider (Dinamik Kategorili)</title>
+
+<!-- jsPDF CDN for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+/* ---------------- Theme variables ---------------- */
+:root{
+  --primary:#294065;
+  --accent:#ff8c00;
+  --success:#17a2b8;
+  --danger:#dc3545;
+  --bg:#f4f7fa;
+  --card:#fff;
+  --text:#223;
+  --muted:#6b7280;
+}
+:root[data-theme="dark"]{
+  --primary:#9fc5ff;
+  --accent:#ffb86b;
+  --success:#63e6be;
+  --danger:#ff7b7b;
+  --bg:#071022;
+  --card:#0d1720;
+  --text:#e6eef8;
+  --muted:#98a8bf;
+}
+
+/* Reset & layout */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; background:var(--bg); color:var(--text);}
+.container{max-width:1200px;margin:20px auto;padding:18px;background:rgba(255,255,255,0.9);border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.12); transition:background .2s;}
+:root[data-theme="dark"] .container{background:rgba(10,18,28,0.6);backdrop-filter: blur(4px);}
+
+/* Topbar */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{margin:0;font-size:1.05rem;color:var(--primary)}
+.controls{display:flex;gap:8px;align-items:center}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+:root[data-theme="dark"] ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.05); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* Buttons/Input */
+button{cursor:pointer;border:0;border-radius:8px;padding:10px 16px;font-weight:600;font-family:inherit;font-size:0.95rem;transition:all 0.2s;}
+.btn-primary{background:var(--primary);color:white}
+.btn-accent{background:var(--accent);color:white}
+.btn-muted{background:#6b7280;color:white}
+input,select{padding:10px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);width:100%;background:transparent;color:var(--text);font-family:inherit;font-size:1rem;}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:16px}
+.card{background:var(--card);padding:14px;border-radius:10px;border-top:4px solid var(--primary);box-shadow:0 6px 20px rgba(0,0,0,0.05)}
+.section-title{margin:0 0 10px 0;font-size:1rem;color:var(--primary)}
+
+/* Balance */
+.balance{font-size:1.5rem;font-weight:700;padding:12px;text-align:center;border-radius:8px;background:linear-gradient(90deg, rgba(255,255,255,0.4), transparent)}
+:root[data-theme="dark"] .balance{background:linear-gradient(90deg, rgba(255,255,255,0.04), transparent)}
+
+/* Transaction list */
+#transactionList{list-style:none;padding:0;margin:0;max-height:380px;overflow-y:auto;overflow-x:hidden;padding-right:4px;}
+.tx-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid rgba(0,0,0,0.04);gap:10px; flex-wrap:nowrap;}
+.tx-left{display:flex;gap:10px;align-items:center;flex:1;min-width:0;}
+.tx-left > div:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tx-right{display:flex;align-items:center;gap:10px;flex-shrink:0; flex-wrap:nowrap;}
+.cat-badge{padding:6px 8px;border-radius:6px;background:rgba(0,0,0,0.03);font-weight:700;color:var(--primary);font-size:0.85rem;white-space:nowrap;flex-shrink:0;}
+.tx-amount{font-weight:800;white-space:nowrap;}
+.income{color:var(--success)}
+.expense{color:var(--danger)}
+.action-btns{display:flex;gap:6px;flex-shrink:0; flex-wrap:nowrap;}
+.action-btns button{white-space:nowrap;}
+
+/* Chart */
+.chart-bar{height:22px;background:#eee;border-radius:8px;overflow:hidden;position:relative}
+.fill{height:100%;text-align:right;padding-right:8px;color:white;font-weight:700;line-height:22px;transition:width .6s ease}
+
+/* Pie legend */
+.legend-item{display:flex;gap:8px;align-items:center;padding:4px 0}
+.color-box{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* Responsive */
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr;align-items:stretch}
+  .controls{flex-direction:row;flex-wrap:wrap}
+  .topbar{flex-direction:column;align-items:flex-start}
+}
+
+/* small utilities */
+.small{font-size:0.85rem;color:var(--muted)}
+.flex{display:flex;gap:8px;align-items:center}
+.right{margin-left:auto}
+.progress{height:12px;background:#eee;border-radius:8px;overflow:hidden}
+.progress > div{height:100%}
+
+/* Spinner */
+.spinner { width: 40px; height: 40px; border: 4px solid rgba(0,0,0,0.1); border-left-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+:root[data-theme="dark"] .spinner { border-color: rgba(255,255,255,0.1); border-left-color: var(--primary); }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+</style>
+</head>
+<body>
+
+<div class="container" id="root">
+  <div class="topbar">
+    <div class="brand">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--primary)"/><path d="M6 15h12V9" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Pro Finans Takip</h1>
+    </div>
+
+    <div class="controls">
+      <select id="currencySelect" title="Giriş para birimi">
+        <option value="TRY">₺ TRY</option>
+        <option value="USD">$ USD</option>
+        <option value="EUR">€ EUR</option>
+        <option value="GBP">£ GBP</option>
+      </select>
+
+      <button id="themeBtn" class="btn-muted">Tema: Otomatik</button>
+      <div id="userProfile" style="display:none; align-items:center; gap:8px; margin-left:8px;">
+        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+        <span id="userName" style="font-weight:600; font-size:0.9rem;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div id="loadingCard" class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; text-align:center;">
+    <div class="spinner"></div>
+    <p style="margin-top:16px; color:var(--primary); font-weight:600;">Oturum Durumu Kontrol Ediliyor...</p>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginCard" class="card" style="display:none; margin-bottom:12px; text-align:center; padding: 40px 20px;">
+    <h2 style="margin-bottom:10px; color:var(--primary);">Hesabınıza Giriş Yapın</h2>
+    <p class="small" style="margin-bottom: 24px;">Tüm finansal verilerinizi güvenle saklamak ve yönetmek için giriş yapın.</p>
+    <button id="googleLoginBtn" class="btn-primary" onclick="if(window.loginWithGoogle) window.loginWithGoogle()" style="background:#fff; color:#444; border:1px solid #ddd; display:inline-flex; align-items:center; gap:10px; font-size:1rem; padding:12px 24px; box-shadow:0 2px 4px rgba(0,0,0,0.1); border-radius:30px;">
+      <svg width="24" height="24" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Google ile Giriş Yap
+    </button>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="balance card">
+      Mevcut Bakiye: <span id="currentBalance">0.00 TL</span>
+      <span class="right small" id="lastSync">Kurlar: -</span>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <!-- Left: data & budget -->
+      <div class="card">
+        <h3 class="section-title">📁 Veri & Bütçe</h3>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn-accent" onclick="exportData()">Dışa Aktar</button>
+          <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+          <button class="btn-muted" onclick="document.getElementById('importFile').click()">İçe Aktar</button>
+        </div>
+
+        <hr>
+        <h4 class="small">🎯 Bütçe Tanımla</h4>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="budgetCategory">
+            <option value="">-- Kategori Seçin --</option>
+          </select>
+          <input id="budgetValue" type="number" placeholder="Aylık TL">
+          <button class="btn-primary" onclick="setBudget()">Kaydet</button>
+        </div>
+        <div id="budgetList" style="margin-top:10px"></div>
+
+        <hr>
+        <h4 class="small">🔔 Bildirimler</h4>
+        <div id="alerts" class="small">Henüz bildirim yok.</div>
+
+        <hr>
+
+        <!-- ⭐ YENİ EKLENEN: Kullanıcı Kategori Yönetimi -->
+        <h3 class="section-title" style="margin-top:16px">📂 Kategori Yönetimi</h3>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="newCategoryName" placeholder="Yeni kategori adı…">
+          <select id="newCategoryType">
+            <option value="income">Gelir</option>
+            <option value="expense">Gider</option>
+          </select>
+          <button class="btn-primary" onclick="addCustomCategory()">Ekle</button>
+        </div>
+
+        <div id="customCategoryList" class="small"></div>
+
+      </div>
+
+      <!-- Middle: form + charts -->
+      <div class="card">
+        <h3 class="section-title">Yeni İşlem / Raporlar</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:12px;">
+          <input id="desc" placeholder="Açıklama" style="grid-column: 1 / -1;">
+          <input id="date" type="date">
+          <input id="amount" type="number" placeholder="Miktar">
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:12px;">
+          <select id="type">
+            <option value="income">Gelir</option>
+            <option value="expense">Gider</option>
+          </select>
+          <select id="categoryInput"></select>
+          <select id="inputCurrency">
+            <option value="TRY">TRY</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn-primary" style="flex:1;" onclick="window.addTransaction()">İşlemi Kaydet</button>
+          <button class="btn-muted" onclick="window.cancelEdit()" id="cancelEdit" style="display:none; flex:1;">İptal</button>
+        </div>
+
+        <hr>
+
+        <h4 class="small">📊 Özet</h4>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:70px;font-size:0.9rem;color:var(--muted)">Gelir</div>
+              <div class="chart-bar"><div class="fill" id="incomeFill" style="width:0%;background:var(--success)"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <div style="width:70px;font-size:0.9rem;color:var(--muted)">Gider</div>
+              <div class="chart-bar"><div class="fill" id="expenseFill" style="width:0%;background:var(--danger)"></div></div>
+            </div>
+          </div>
+          <div style="width:190px;text-align:center">
+            <div class="small">Net</div>
+            <div id="net" style="font-weight:800;font-size:1.1rem">0.00 TL</div>
+            <div style="margin-top:8px">
+              <button class="btn-primary" onclick="generatePdf()">PDF İndir</button>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <div style="text-align:center">
+          <p class="small">Kategori Harcama Payı</p>
+          <div id="pie" style="width:150px;height:150px;margin:8px auto;border-radius:50%;border:4px solid var(--primary)"></div>
+          <div id="pieLegend"></div>
+        </div>
+
+      </div>
+
+      <!-- Right: filters & transactions -->
+      <div class="card">
+        <h3 class="section-title">Filtreler & İşlemler</h3>
+        <div class="small">Göster</div>
+        <div style="display:flex;gap:8px;margin:8px 0">
+          <select id="filterCategory" onchange="window.applyFilters()"><option value="all">Tüm Kategoriler</option></select>
+          <select id="filterType" onchange="window.applyFilters()"><option value="all">Tümü</option><option value="income">Gelir</option><option value="expense">Gider</option></select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="startDate" type="date" onchange="window.applyFilters()">
+          <input id="endDate" type="date" onchange="window.applyFilters()">
+        </div>
+        <input id="search" placeholder="Açıklamada ara..." oninput="window.applyFilters()" style="margin-bottom:8px">
+
+        <h4 class="small">📜 İşlemler</h4>
+        <ul id="transactionList"></ul>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-muted" onclick="window.logout()">Çıkış</button>
+          <button class="btn-muted" onclick="window.clearAll()">Tüm Verileri Temizle</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ===========================
+   Pro Finans Takip - Cloud Sync (Firestore)
+   =========================== */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDAzYFQjwsl1-USyfSMCCqdEocyJej12gg",
+  authDomain: "butcetakip-ffe93.firebaseapp.com",
+  projectId: "butcetakip-ffe93",
+  storageBucket: "butcetakip-ffe93.firebasestorage.app",
+  messagingSenderId: "487864443559",
+  appId: "1:487864443559:web:c82de3f7289ae566e77182",
+  measurementId: "G-6JFM4DT7EF"
+};
+
+const EXCHANGE_API_KEY = 'YOUR_API_KEY_HERE';
+const EXCHANGE_API_BASE_URL = EXCHANGE_API_KEY && EXCHANGE_API_KEY !== 'YOUR_API_KEY_HERE'
+  ? `https://v6.exchangerate-api.com/v6/${EXCHANGE_API_KEY}/latest/TRY`
+  : null;
+const KEYLESS_FALLBACK_URL = 'https://open.er-api.com/v6/latest/TRY';
+const SUPPORTED_CURRENCIES = ['TRY','USD','EUR','GBP'];
+
+/* ---------- State ---------- */
+let transactions = [];
+let budgets = {};
+let balance = 0;
+let editingId = null;
+let exchangeRates = {TRY:1, USD:0.036, EUR:0.033, GBP:0.028}; 
+let customCategories = {income:[], expense:[]};
+
+let app, auth, db, provider;
+let unsubscribeTransactions = null;
+let unsubscribeBudgets = null;
+let unsubscribeSettings = null;
+let currentUser = null;
+
+/* ---------- DOM Refs ---------- */
+const loginCard = document.getElementById('loginCard');
+const appEl = document.getElementById('app');
+const currentBalanceEl = document.getElementById('currentBalance');
+const lastSyncEl = document.getElementById('lastSync');
+const descEl = document.getElementById('desc');
+const dateEl = document.getElementById('date');
+const amountEl = document.getElementById('amount');
+const typeEl = document.getElementById('type');
+const categoryInput = document.getElementById('categoryInput');
+const inputCurrency = document.getElementById('inputCurrency');
+const transactionListEl = document.getElementById('transactionList');
+const incomeFill = document.getElementById('incomeFill');
+const expenseFill = document.getElementById('expenseFill');
+const netEl = document.getElementById('net');
+const pieEl = document.getElementById('pie');
+const pieLegendEl = document.getElementById('pieLegend');
+const budgetCategorySel = document.getElementById('budgetCategory');
+const budgetValueEl = document.getElementById('budgetValue');
+const budgetListEl = document.getElementById('budgetList');
+const alertsEl = document.getElementById('alerts');
+const filterCategory = document.getElementById('filterCategory');
+const filterType = document.getElementById('filterType');
+const startDate = document.getElementById('startDate');
+const endDate = document.getElementById('endDate');
+const searchBox = document.getElementById('search');
+const currencySelect = document.getElementById('currencySelect');
+const themeBtn = document.getElementById('themeBtn');
+
+/* ---------- Auth & Init Firestore ---------- */
+if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  provider = new GoogleAuthProvider();
+  
+  onAuthStateChanged(auth, (user) => {
+    document.getElementById('loadingCard').style.display = 'none';
+    if (user) {
+      currentUser = user;
+      window.handleGoogleSuccess(user);
+      startListeners(user.uid);
+    } else {
+      currentUser = null;
+      window.handleGoogleLogout();
+      stopListeners();
+    }
+  });
+} else {
+  // If API key is missing, hide spinner and show login card
+  document.getElementById('loadingCard').style.display = 'none';
+  document.getElementById('loginCard').style.display = 'block';
+}
+
+function startListeners(uid) {
+  unsubscribeSettings = onSnapshot(doc(db, "users", uid, "settings", "data"), (snap) => {
+    if(snap.exists()) {
+      const data = snap.data();
+      if(data.customCategories) customCategories = data.customCategories;
+    }
+    populateCategorySelects();
+    renderCustomCategoryList();
+    calculateAndRender();
+  });
+
+  unsubscribeTransactions = onSnapshot(collection(db, "users", uid, "transactions"), (snap) => {
+    transactions = [];
+    let calcBalance = 0;
+    snap.forEach(d => {
+      const t = d.data();
+      transactions.push({ id: d.id, ...t });
+      calcBalance = parseFloat((calcBalance + Number(t.amount)).toFixed(2));
+    });
+    balance = calcBalance;
+    applyFilters();
+    calculateAndRender();
+  });
+
+  unsubscribeBudgets = onSnapshot(doc(db, "users", uid, "settings", "budgets"), (snap) => {
+    if(snap.exists()){
+      budgets = snap.data();
+    } else {
+      budgets = {};
+    }
+    calculateAndRender();
+  });
+}
+
+function stopListeners() {
+  if(unsubscribeSettings) unsubscribeSettings();
+  if(unsubscribeTransactions) unsubscribeTransactions();
+  if(unsubscribeBudgets) unsubscribeBudgets();
+  transactions = []; budgets = {}; balance = 0; customCategories = {income:[], expense:[]};
+  updateUI();
+}
+
+window.loginWithGoogle = async () => {
+  if(!auth) { alert("Lütfen kaynak kodundan Firebase ayarlarınızı (config) yapılandırın."); return; }
+  try { await signInWithPopup(auth, provider); } 
+  catch (error) { console.error("Giriş Hatası:", error); alert("Giriş hatası: " + error.message); }
+};
+
+window.logoutGoogle = async () => {
+  if(!auth) return;
+  try { await signOut(auth); } catch(err) { console.error(err); }
+};
+
+function checkAuth() {
+  if(!currentUser) { alert('Lütfen önce giriş yapın.'); return false; }
+  return true;
+}
+
+/* ---------- Helpers ---------- */
+function formatTL(v){ return Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL'; }
+function convertToTRY(amount,currency){
+  if(currency === 'TRY') return Number(amount);
+  const rate = exchangeRates[currency];
+  if(!rate || rate === 0) return Number(amount);
+  return Number(amount) / rate;
+}
+
+/* ---------- Exchange API ---------- */
+async function fetchExchangeRates(){
+  try{
+    let data = null;
+    if(EXCHANGE_API_BASE_URL){
+      const r = await fetch(EXCHANGE_API_BASE_URL); data = await r.json();
+      if(!data || data.result === 'error') throw new Error('Primary API failed');
+      const conv = data.conversion_rates || data.rates || {};
+      exchangeRates = {};
+      for(const c of SUPPORTED_CURRENCIES){ exchangeRates[c] = conv[c] || (c==='TRY'?1:exchangeRates[c]||1); }
+      lastSyncEl.textContent = 'Kurlar: API (primary) ile güncellendi';
+      return;
+    }
+    const r2 = await fetch(KEYLESS_FALLBACK_URL); const d2 = await r2.json();
+    if(!d2 || d2.result === 'error') throw new Error('Fallback failed');
+    const cr = d2.rates || d2.conversion_rates || {};
+    exchangeRates = {};
+    for(const c of SUPPORTED_CURRENCIES){ exchangeRates[c] = cr[c] || (c==='TRY'?1:exchangeRates[c]||1); }
+    lastSyncEl.textContent = 'Kurlar: API (fallback) ile güncellendi';
+  } catch(err){
+    console.error('Kur çekme hatası:', err);
+    lastSyncEl.textContent = 'Kurlar: API hatası (varsayılan kurlar kullanıldı)';
+  }
+}
+
+const INCOME_CATEGORIES = ['Maaş','Ek Gelir','Bonus','Kira Geliri','Faiz/Temettü','Diğer'];
+const EXPENSE_CATEGORIES = ['Gıda','Kira','Fatura','Ulaşım','Eğlence','Sağlık','Giyim','Eğitim','Diğer'];
+
+function getCategoryColor(cat) {
+  let hash = 0;
+  for (let i = 0; i < cat.length; i++) hash = cat.charCodeAt(i) + ((hash << 5) - hash);
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 55%)`;
+}
+
+function populateCategorySelects(){
+  categoryInput.innerHTML = '<option value="">-- Kategori Seçin --</option>';
+  budgetCategorySel.innerHTML = '<option value="">-- Kategori Seçin --</option>';
+  filterCategory.innerHTML = '<option value="all">Tüm Kategoriler</option>';
+
+  const allIncome = [...INCOME_CATEGORIES, ...(customCategories.income || [])];
+  const allExpense = [...EXPENSE_CATEGORIES, ...(customCategories.expense || [])];
+
+  const incGroup1 = document.createElement('optgroup'); incGroup1.label = 'Gelir Kaynakları';
+  const expGroup1 = document.createElement('optgroup'); expGroup1.label = 'Gider Kalemleri';
+  const incGroup2 = document.createElement('optgroup'); incGroup2.label = 'Gelir Kaynakları';
+  const expGroup2 = document.createElement('optgroup'); expGroup2.label = 'Gider Kalemleri';
+  const incGroup3 = document.createElement('optgroup'); incGroup3.label = 'Gelir Kaynakları';
+  const expGroup3 = document.createElement('optgroup'); expGroup3.label = 'Gider Kalemleri';
+
+  for(const c of allIncome){
+    const opt = document.createElement('option'); opt.value = c; opt.textContent = c;
+    incGroup1.appendChild(opt.cloneNode(true));
+    incGroup2.appendChild(opt.cloneNode(true));
+    incGroup3.appendChild(opt.cloneNode(true));
+  }
+  for(const c of allExpense){
+    const opt = document.createElement('option'); opt.value = c; opt.textContent = c;
+    expGroup1.appendChild(opt.cloneNode(true));
+    expGroup2.appendChild(opt.cloneNode(true));
+    expGroup3.appendChild(opt.cloneNode(true));
+  }
+
+  categoryInput.appendChild(incGroup1); categoryInput.appendChild(expGroup1);
+  filterCategory.appendChild(incGroup2); filterCategory.appendChild(expGroup2);
+  budgetCategorySel.appendChild(incGroup3); budgetCategorySel.appendChild(expGroup3);
+}
+
+function renderTransactions(list = transactions){
+  transactionListEl.innerHTML = '';
+  if(!list.length){ transactionListEl.innerHTML = '<li class="small">Kayıtlı işlem yok.</li>'; return; }
+  list.sort((a,b)=> new Date(b.isoDate) - new Date(a.isoDate));
+  for(const t of list){
+    const li = document.createElement('li'); li.className = 'tx-item';
+    const left = document.createElement('div'); left.className='tx-left';
+    left.innerHTML = `<div class="cat-badge" style="background:${getCategoryColor(t.category)}22;color:${getCategoryColor(t.category)}">${t.category}</div>
+      <div><div style="font-weight:700">${t.description}</div><div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
+    const right = document.createElement('div'); right.className='tx-right';
+    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='90px'; amt.style.textAlign='right';
+    amt.textContent = (t.type==='expense'?'- ':'+ ') + formatTL(Math.abs(t.amount));
+    const act = document.createElement('div'); act.className='action-btns';
+    act.innerHTML = `<button class="btn-accent" style="padding:6px 8px;" onclick="window.startEdit('${t.id}')">Düzenle</button>
+                     <button class="btn-muted" style="padding:6px 8px;" onclick="window.removeTx('${t.id}')">Sil</button>`;
+    right.appendChild(amt); right.appendChild(act);
+    li.appendChild(left); li.appendChild(right);
+    transactionListEl.appendChild(li);
+  }
+}
+
+function calculateAndRender(){
+  let totalIncome = 0, totalExpense = 0;
+  for(const t of transactions){
+    if(t.type === 'income') totalIncome = parseFloat((totalIncome + Number(t.amount)).toFixed(2));
+    else totalExpense = parseFloat((totalExpense + Math.abs(Number(t.amount))).toFixed(2));
+  }
+  currentBalanceEl.textContent = formatTL(balance);
+  netEl.textContent = formatTL(totalIncome - totalExpense);
+
+  const maxv = Math.max(totalIncome, totalExpense,1);
+  incomeFill.style.width = (totalIncome / maxv * 100) + '%'; incomeFill.textContent = totalIncome>0? formatTL(totalIncome):'';
+  expenseFill.style.width = (totalExpense / maxv * 100) + '%'; expenseFill.textContent = totalExpense>0? formatTL(totalExpense):'';
+
+  const expenseByCat = {};
+  let texp = 0;
+  for(const tx of transactions){ if(tx.type==='expense'){ expenseByCat[tx.category] = parseFloat(((expenseByCat[tx.category]||0) + Math.abs(Number(tx.amount))).toFixed(2)); texp = parseFloat((texp + Math.abs(Number(tx.amount))).toFixed(2)); } }
+  if(texp === 0){ pieEl.style.backgroundImage = 'conic-gradient(#ddd 0% 100%)'; pieLegendEl.innerHTML = '<div class="small">Harcanan gider yok.</div>'; }
+  else{
+    let segs=[],deg=0,legend='';
+    for(const cat in expenseByCat){
+      const amt = expenseByCat[cat]; const perc = amt/texp; const start = deg; const end = deg + perc*360;
+      const color = getCategoryColor(cat);
+      segs.push(`${color} ${start}deg ${end}deg`);
+      legend += `<div class="legend-item"><span class="color-box" style="background:${color}"></span> ${cat}: ${(perc*100).toFixed(1)}%</div>`;
+      deg = end;
+    }
+    pieEl.style.backgroundImage = `conic-gradient(${segs.join(',')})`;
+    pieLegendEl.innerHTML = legend;
+  }
+
+  renderBudgetList();
+  checkBudgetAlerts();
+}
+
+/* ---------- Transactions ---------- */
+window.addTransaction = async function(){
+  if(!checkAuth()) return;
+  const desc = descEl.value.trim(); const amtRaw = parseFloat(amountEl.value); const typ = typeEl.value; const cat = categoryInput.value; const dateVal = dateEl.value; const cur = inputCurrency.value;
+  if(!desc || isNaN(amtRaw) || amtRaw<=0 || !cat || !dateVal){ alert('Lütfen tüm alanları doldurun.'); return; }
+  const amountTRY = convertToTRY(amtRaw, cur);
+  const txData = { description:desc, amount: typ==='expense'? -Math.abs(amountTRY): Math.abs(amountTRY), type:typ, category:cat, isoDate:dateVal, createdAt: Date.now() };
+  
+  if(editingId !== null){
+    await updateDoc(doc(db, "users", currentUser.uid, "transactions", editingId), txData);
+    editingId = null;
+    document.getElementById('cancelEdit').style.display='none';
+  } else {
+    await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+  }
+  descEl.value=''; amountEl.value=''; categoryInput.value=''; dateEl.value = new Date().toISOString().slice(0,10);
+};
+
+window.startEdit = function(id){
+  const tx = transactions.find(t=>t.id===id);
+  if(!tx) return;
+  editingId = id;
+  descEl.value = tx.description;
+  amountEl.value = Math.abs(tx.amount).toFixed(2);
+  typeEl.value = tx.type;
+  categoryInput.value = tx.category;
+  dateEl.value = tx.isoDate;
+  document.getElementById('cancelEdit').style.display='inline-block';
+};
+
+window.cancelEdit = function(){ editingId = null; descEl.value=''; amountEl.value=''; typeEl.value='income'; categoryInput.value=''; dateEl.value=new Date().toISOString().slice(0,10); document.getElementById('cancelEdit').style.display='none'; };
+
+window.removeTx = async function(id){
+  if(!checkAuth()) return;
+  if(!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
+  await deleteDoc(doc(db, "users", currentUser.uid, "transactions", id));
+};
+
+/* ---------- Filters ---------- */
+window.applyFilters = function(){
+  const cat = filterCategory.value;
+  const typ = filterType.value;
+  const s = startDate.value; const e = endDate.value; const q = searchBox.value.trim().toLowerCase();
+  let filtered = transactions.slice();
+  if(cat !== 'all') filtered = filtered.filter(t=>t.category === cat);
+  if(typ !== 'all') filtered = filtered.filter(t=>t.type === typ);
+  if(s) filtered = filtered.filter(t=>t.isoDate >= s);
+  if(e) filtered = filtered.filter(t=>t.isoDate <= e);
+  if(q) filtered = filtered.filter(t=> (t.description || '').toLowerCase().includes(q));
+  renderTransactions(filtered);
+  let ti=0, te=0;
+  for(const t of filtered){ if(t.type==='income') ti = parseFloat((ti + Number(t.amount)).toFixed(2)); else te = parseFloat((te + Math.abs(Number(t.amount))).toFixed(2)); }
+  const maxv = Math.max(ti,te,1);
+  incomeFill.style.width = (ti / maxv * 100) + '%'; incomeFill.textContent = ti>0? formatTL(ti):'';
+  expenseFill.style.width = (te / maxv * 100) + '%'; expenseFill.textContent = te>0? formatTL(te):'';
+  netEl.textContent = formatTL(ti-te);
+};
+
+/* ---------- Budgets & Alerts ---------- */
+window.setBudget = async function(){
+  if(!checkAuth()) return;
+  const cat = budgetCategorySel.value;
+  const val = parseFloat(budgetValueEl.value);
+  if(!cat || isNaN(val) || val<=0){ alert('Lütfen geçerli kategori ve pozitif miktar girin.'); return; }
+  budgets[cat] = val;
+  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+  budgetValueEl.value=''; budgetCategorySel.value='';
+};
+
+function renderBudgetList(){
+  if(!Object.keys(budgets).length){ budgetListEl.innerHTML = '<div class="small">Tanımlanmış bütçe yok.</div>'; return; }
+  let html = '';
+  for(const cat in budgets){
+    const limit = budgets[cat];
+    const nowYM = new Date().toISOString().slice(0,7);
+    const spent = transactions.filter(t=>t.type==='expense' && t.isoDate && t.isoDate.slice(0,7) === nowYM && t.category===cat).reduce((s,t)=>parseFloat((s+Math.abs(t.amount)).toFixed(2)),0);
+    const remaining = parseFloat((limit - spent).toFixed(2));
+    const perc = Math.min(100, (spent/limit)*100);
+    const actualPerc = (spent/limit)*100;
+    let color = 'var(--success)';
+    if(actualPerc >= 100) color = '#ff7675'; else if(actualPerc >= 80) color = '#fdcb6e';
+    html += `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between"><div style="font-weight:700">${cat} - ${formatTL(limit)}</div>
+      <div><button class="btn-accent" onclick="window.editBudget('${cat}')">Düzenle</button> <button class="btn-muted" onclick="window.deleteBudget('${cat}')">Sil</button></div></div>
+      <div class="small">Harcanan: ${formatTL(spent)} — Kalan: <strong style="color:${remaining>=0?'var(--success)':'var(--danger)'}">${formatTL(remaining)}</strong></div>
+      <div class="progress" style="margin-top:6px"><div style="width:${perc}%;background:${color};height:100%"></div></div>
+    </div>`;
+  }
+  budgetListEl.innerHTML = html;
+}
+
+window.editBudget = function(cat){ budgetCategorySel.value=cat; budgetValueEl.value=budgets[cat]; budgetCategorySel.disabled=true; alert('Yeni miktarı girip Kaydet butonuna tıklayın.'); };
+window.deleteBudget = async function(cat){ 
+  if(!checkAuth()) return;
+  if(!confirm('Silinsin mi?')) return; 
+  delete budgets[cat]; 
+  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+};
+
+function checkBudgetAlerts(){
+  const nowYM = new Date().toISOString().slice(0,7);
+  const msgs = [];
+  for(const cat in budgets){
+    const limit = budgets[cat];
+    const spent = transactions.filter(t=>t.type==='expense' && t.isoDate && t.isoDate.slice(0,7) === nowYM && t.category===cat).reduce((s,t)=>parseFloat((s+Math.abs(t.amount)).toFixed(2)),0);
+    const perc = (spent/limit)*100;
+    if(perc >= 90 && perc < 100) msgs.push(`${cat} bütçenizin %${Math.floor(perc)}'i harcandı (yakınsınız).`);
+    if(perc >= 100) msgs.push(`${cat} bütçenizi aştınız! Harcama: ${Number(spent).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${formatTL(limit)}`);
+  }
+  if(msgs.length === 0) alertsEl.innerHTML = 'Henüz bildirim yok.';
+  else alertsEl.innerHTML = msgs.map(m=>`<div style="margin-bottom:6px">${m}</div>`).join('');
+}
+
+/* ---------- PDF generation ---------- */
+window.generatePdf = async function(){
+  const jsPDF = window.jspdf.jsPDF;
+  const doc = new jsPDF({unit:'pt',format:'a4'});
+  const now = new Date(); const ym = now.toISOString().slice(0,7);
+  doc.setFontSize(18); doc.text('Aylık Finansal Rapor', 40, 50);
+  doc.setFontSize(11); doc.text(`Ay: ${ym}`, 40, 72);
+  const monthTx = transactions.filter(t=> t.isoDate && t.isoDate.slice(0,7) === ym);
+  let inc=0, exp=0;
+  for(const t of monthTx){ if(t.type==='income') inc = parseFloat((inc + Number(t.amount)).toFixed(2)); else exp = parseFloat((exp + Math.abs(Number(t.amount))).toFixed(2)); }
+  doc.text(`Toplam Gelir: ${formatTL(inc)}`, 40, 100); doc.text(`Toplam Gider: ${formatTL(exp)}`, 40, 118);
+  doc.text(`Net: ${formatTL(inc-exp)}`, 40, 136);
+  doc.text('İşlemler (son 20):', 40, 170);
+  doc.setFontSize(9);
+  const rows = monthTx.slice(0,20).map(t=>[new Date(t.isoDate).toLocaleDateString(), t.category, t.description, (t.type==='expense'?'-':'') + formatTL(Math.abs(t.amount))]);
+  let y = 190;
+  doc.setFontSize(9);
+  rows.forEach(r=>{ doc.text(r.join(' | '), 40, y); y+=14; });
+  doc.save(`finans_rapor_${ym}.pdf`);
+};
+
+/* ---------- Export / Import ---------- */
+window.exportData = function(){
+  const payload = { transactions, budgets, balance, customCategories };
+  const blob = new Blob([JSON.stringify(payload,null,2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = 'pf_backup_' + new Date().toISOString().slice(0,10) + '.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+window.importData = function(ev){
+  if(!checkAuth()) { ev.target.value = ''; return; }
+  const file = ev.target.files[0]; if(!file) return;
+  if(!confirm('İçe aktarma mevcut verileri buluta aktaracak. Devam?')) { ev.target.value = ''; return; }
+  const fr = new FileReader();
+  fr.onload = async function(e){
+    try{
+      const payload = JSON.parse(e.target.result);
+      if(payload.transactions){
+        for(const t of payload.transactions){
+          const txData = { description: t.description, amount: t.amount, type: t.type, category: t.category, isoDate: t.isoDate, createdAt: Date.now() };
+          await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+        }
+      }
+      if(payload.budgets) await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), payload.budgets);
+      if(payload.customCategories) await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: payload.customCategories }, { merge: true });
+      alert('İçe aktarma başarılı (Buluta eklendi)');
+    }catch(err){ alert('Geçersiz dosya'); console.error(err); }
+    ev.target.value = '';
+  };
+  fr.readAsText(file);
+};
+
+/* ---------- UI State Handlers ---------- */
+window.handleGoogleSuccess = (user) => {
+  loginCard.style.display='none'; 
+  appEl.style.display='block'; 
+  document.getElementById('userProfile').style.display='flex';
+  document.getElementById('userPhoto').src = user.photoURL || 'https://via.placeholder.com/32';
+  document.getElementById('userName').textContent = user.displayName || user.email;
+};
+
+window.handleGoogleLogout = () => {
+  appEl.style.display='none'; 
+  loginCard.style.display='block'; 
+  document.getElementById('userProfile').style.display='none';
+
+  // Clear inputs explicitly
+  if(descEl) descEl.value = '';
+  if(amountEl) amountEl.value = '';
+  if(budgetCategorySel) budgetCategorySel.value = '';
+  if(budgetValueEl) budgetValueEl.value = '';
+  if(filterCategory) filterCategory.value = 'all';
+  if(filterType) filterType.value = 'all';
+  if(searchBox) searchBox.value = '';
+  
+  // Clean up editing state
+  editingId = null;
+  const cancelBtn = document.getElementById('cancelEdit');
+  if(cancelBtn) cancelBtn.style.display='none';
+};
+
+window.logout = function(){ 
+  if(!confirm('Çıkış yapmak istiyor musunuz?')) return; 
+  if(window.logoutGoogle) window.logoutGoogle();
+};
+
+window.clearAll = async function(){ 
+  if(!checkAuth()) return;
+  if(!confirm('Tüm veriler (İşlemler, Bütçeler ve Kategoriler) buluttan tamamen SİLİNECEK. Emin misiniz?')) return; 
+  const snap = await getDocs(collection(db, "users", currentUser.uid, "transactions"));
+  snap.forEach(async (d) => { await deleteDoc(d.ref); });
+  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), {});
+  await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: {income:[], expense:[]} }, { merge: true });
+  alert('Tüm bulut verileri temizlendi.'); 
+};
+
+function updateUI(){
+  document.getElementById('currentBalance').textContent = formatTL(balance);
+  renderTransactions();
+  calculateAndRender();
+  populateCategorySelects();
+}
+
+/* ---------- Custom category UI functions ---------- */
+window.saveCustomCategories = async function(){
+  if(!checkAuth()) return;
+  await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: customCategories }, { merge: true });
+};
+
+function renderCustomCategoryList(){
+  const div = document.getElementById('customCategoryList');
+  let html = '';
+  ['income','expense'].forEach(type=>{
+    html += `<div style="margin-top:6px;font-weight:700;color:var(--primary)">${type==='income'?'Gelir':'Gider'} Kategorileri</div>`;
+    const list = customCategories[type] || [];
+    if(list.length === 0) html += `<div class="small" style="margin-left:6px">Eklenen kategori yok.</div>`;
+    list.forEach(cat=>{
+      html += `<div style="display:flex;justify-content:space-between;padding:4px 0;margin-left:6px">
+        <span>${cat}</span>
+        <div><button class="btn-accent" style="padding:4px 6px;margin-right:6px" onclick="window.useCustomCategory('${type}','${cat}')">Seç</button><button class="btn-muted" style="padding:4px 6px" onclick="window.deleteCustomCategory('${type}','${cat}')">Sil</button></div>
+      </div>`;
+    });
+  });
+  div.innerHTML = html;
+}
+
+window.addCustomCategory = async function(){
+  if(!checkAuth()) return;
+  const name = document.getElementById('newCategoryName').value.trim();
+  const type = document.getElementById('newCategoryType').value;
+  if(!name){ alert('Kategori adı boş olamaz.'); return; }
+  if(!customCategories[type]) customCategories[type] = [];
+  if(customCategories[type].includes(name)){ alert('Bu kategori zaten mevcut.'); return; }
+  customCategories[type].push(name);
+  await window.saveCustomCategories();
+  document.getElementById('newCategoryName').value = '';
+};
+
+window.deleteCustomCategory = async function(type,name){
+  if(!checkAuth()) return;
+  if(!confirm('Kategori silinsin mi?')) return;
+  customCategories[type] = (customCategories[type]||[]).filter(c=>c!==name);
+  await window.saveCustomCategories();
+};
+
+window.useCustomCategory = function(type,name){
+  document.getElementById('type').value = type;
+  populateCategorySelects();
+  document.getElementById('categoryInput').value = name;
+};
+
+/* ---------- Theme toggle ---------- */
+function applyTheme(saved){
+  if(saved === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); themeBtn.textContent='Tema: Koyu'; }
+  else if(saved === 'light'){ document.documentElement.removeAttribute('data-theme'); themeBtn.textContent='Tema: Aydınlık'; }
+  else {
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(prefersDark) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
+    themeBtn.textContent='Tema: Otomatik';
+  }
+}
+themeBtn.addEventListener('click', ()=>{
+  const cur = localStorage.getItem('pf_theme') || 'auto';
+  const next = cur === 'auto' ? 'dark' : (cur === 'dark' ? 'light' : 'auto');
+  localStorage.setItem('pf_theme', next);
+  applyTheme(next);
+});
+(function(){ const saved = localStorage.getItem('pf_theme') || 'auto'; applyTheme(saved); })();
+
+/* ---------- Init on load ---------- */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  dateEl.value = new Date().toISOString().slice(0,10);
+  populateCategorySelects();
+  renderCustomCategoryList();
+  await fetchExchangeRates();
+});
+
+</script>
+</body>
+</html>
+
+
