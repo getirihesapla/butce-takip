@@ -229,14 +229,11 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
           </select>
-          <select id="installment" title="Taksit Sayısı">
-            <option value="1">Peşin (1)</option>
-            <option value="2">2 Taksit</option>
-            <option value="3">3 Taksit</option>
-            <option value="6">6 Taksit</option>
-            <option value="9">9 Taksit</option>
-            <option value="12">12 Taksit</option>
+          <select id="paymentType" onchange="document.getElementById('installment').style.display = this.value === 'taksit' ? 'inline-block' : 'none'">
+            <option value="pesin">Peşin (1)</option>
+            <option value="taksit">Taksitlendir</option>
           </select>
+          <input id="installment" type="number" min="2" max="120" placeholder="Kaç Taksit?" style="display:none;">
         </div>
         <div style="display:flex; gap:12px;">
           <button class="btn-primary" style="flex:1;" onclick="window.addTransaction()">İşlemi Kaydet</button>
@@ -600,8 +597,9 @@ window.addTransaction = async function(){
     editingId = null;
     document.getElementById('cancelEdit').style.display='none';
   } else {
-    const instSelect = document.getElementById('installment');
-    const installmentCount = instSelect ? parseInt(instSelect.value) || 1 : 1;
+    const payType = document.getElementById('paymentType')?.value;
+    const instEl = document.getElementById('installment');
+    const installmentCount = (payType === 'taksit' && instEl && instEl.value) ? parseInt(instEl.value) : 1;
     
     if (installmentCount === 1) {
       const txData = { description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now() };
@@ -634,7 +632,9 @@ window.addTransaction = async function(){
   }
   descEl.value=''; amountEl.value=''; categoryInput.value=''; dateEl.value = new Date().toISOString().slice(0,10);
   const instEl = document.getElementById('installment');
-  if(instEl) instEl.value = '1';
+  if(instEl) { instEl.value = ''; instEl.style.display = 'none'; }
+  const payTypeEl = document.getElementById('paymentType');
+  if(payTypeEl) payTypeEl.value = 'pesin';
 };
 
 window.startEdit = function(id){
