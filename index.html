@@ -160,9 +160,17 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
   </div>
 
   <div id="app" style="display:none">
-    <div class="balance card">
-      Mevcut Bakiye: <span id="currentBalance">0.00 TL</span>
-      <span class="right small" id="lastSync">Kurlar: -</span>
+    <div class="balance card" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div>
+        Mevcut Bakiye: <span id="currentBalance">0.00 TL</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('TRY')">TRY</button>
+        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('USD')">USD</button>
+        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('EUR')">EUR</button>
+        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('GAU')">ALTIN</button>
+      </div>
+      <span class="right small" id="lastSync" style="margin-left:auto;">Kurlar: -</span>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -337,6 +345,25 @@ const SUPPORTED_CURRENCIES = ['TRY','USD','EUR','GBP','GAU'];
 /* ---------- State ---------- */
 let transactions = [];
 let budgets = {};
+let globalDisplayCurrency = 'TRY';
+
+window.setGlobalCurrency = function(cur) {
+  globalDisplayCurrency = cur;
+  calculateAndRender();
+};
+
+function convertFromTRY(amountTRY, targetCurrency) {
+  if (targetCurrency === 'TRY') return Number(amountTRY);
+  const rate = exchangeRates[targetCurrency];
+  if (!rate || rate === 0) return Number(amountTRY);
+  return Number(amountTRY) * rate;
+}
+
+function formatCurrency(amount, currency) {
+  const sym = {'TRY':' TL', 'USD':' $', 'EUR':' €', 'GBP':' £', 'GAU':' Gram'}[currency] || '';
+  const num = Number(amount).toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return num + sym;
+}
 let balance = 0;
 let editingId = null;
 let exchangeRates = {TRY:1, USD:0.036, EUR:0.033, GBP:0.028}; 
@@ -550,8 +577,10 @@ function renderTransactions(list = transactions){
     left.innerHTML = `<div class="cat-badge" style="background:${getCategoryColor(t.category)}22;color:${getCategoryColor(t.category)}">${t.category}</div>
       <div><div style="font-weight:700">${t.description}</div><div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
     const right = document.createElement('div'); right.className='tx-right';
-    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='90px'; amt.style.textAlign='right';
-    amt.textContent = (t.type==='expense'?'- ':'+ ') + formatTL(Math.abs(t.amount));
+    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
+    const sign = t.type === 'expense' ? '- ' : '+ ';
+    const dispAmt = t.originalCurrency ? formatCurrency(Math.abs(t.originalAmount), t.originalCurrency) : formatTL(Math.abs(t.amount));
+    amt.textContent = sign + dispAmt;
     const act = document.createElement('div'); act.className='action-btns';
     act.innerHTML = `<button class="btn-accent" style="padding:6px 8px;" onclick="window.startEdit('${t.id}')">Düzenle</button>
                      <button class="btn-muted" style="padding:6px 8px;" onclick="window.removeTx('${t.id}')">Sil</button>`;
@@ -567,12 +596,18 @@ function calculateAndRender(){
     if(t.type === 'income') totalIncome = parseFloat((totalIncome + Number(t.amount)).toFixed(2));
     else totalExpense = parseFloat((totalExpense + Math.abs(Number(t.amount))).toFixed(2));
   }
-  currentBalanceEl.textContent = formatTL(balance);
-  netEl.textContent = formatTL(totalIncome - totalExpense);
+  const convBal = convertFromTRY(balance, globalDisplayCurrency);
+  const convInc = convertFromTRY(totalIncome, globalDisplayCurrency);
+  const convExp = convertFromTRY(totalExpense, globalDisplayCurrency);
+  
+  currentBalanceEl.textContent = formatCurrency(convBal, globalDisplayCurrency);
+  netEl.textContent = formatCurrency(convInc - convExp, globalDisplayCurrency);
 
-  const maxv = Math.max(totalIncome, totalExpense,1);
-  incomeFill.style.width = (totalIncome / maxv * 100) + '%'; incomeFill.textContent = totalIncome>0? formatTL(totalIncome):'';
-  expenseFill.style.width = (totalExpense / maxv * 100) + '%'; expenseFill.textContent = totalExpense>0? formatTL(totalExpense):'';
+  const maxv = Math.max(convInc, convExp, 1);
+  incomeFill.style.width = (convInc / maxv * 100) + '%'; 
+  incomeFill.textContent = convInc > 0 ? formatCurrency(convInc, globalDisplayCurrency) : '';
+  expenseFill.style.width = (convExp / maxv * 100) + '%'; 
+  expenseFill.textContent = convExp > 0 ? formatCurrency(convExp, globalDisplayCurrency) : '';
 
   const expenseByCat = {};
   let texp = 0;
