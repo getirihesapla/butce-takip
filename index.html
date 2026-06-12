@@ -202,8 +202,8 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 
         <div style="display:flex;gap:8px">
           <button class="btn-accent" onclick="exportData()">Dışa Aktar</button>
-          <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
-          <button class="btn-muted" onclick="document.getElementById('importFile').click()">İçe Aktar</button>
+          <input type="file" id="import-file-input" style="display:none" accept=".json,.csv" onchange="handleDataImport(event)">
+          <button class="btn-muted" onclick="document.getElementById('import-file-input').click()">İçe Aktar</button>
         </div>
 
         <hr>
@@ -942,27 +942,82 @@ window.exportData = function(){
   const a = document.createElement('a'); a.href=url; a.download = 'pf_backup_' + new Date().toISOString().slice(0,10) + '.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 };
 
-window.importData = function(ev){
-  if(!checkAuth()) { ev.target.value = ''; return; }
-  const file = ev.target.files[0]; if(!file) return;
-  if(!confirm('İçe aktarma mevcut verileri buluta aktaracak. Devam?')) { ev.target.value = ''; return; }
+window.handleDataImport = function(ev) {
+  const file = ev.target.files[0]; 
+  if(!file) return;
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  
   const fr = new FileReader();
-  fr.onload = async function(e){
-    try{
-      const payload = JSON.parse(e.target.result);
-      if(payload.transactions){
-        for(const t of payload.transactions){
-          const txData = { description: t.description, amount: t.amount, type: t.type, category: t.category, isoDate: t.isoDate, createdAt: Date.now() };
-          await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+  fr.onload = async function(e) {
+    try {
+      const text = e.target.result;
+      let importedTx = [];
+
+      if(isCSV) {
+        const rows = text.split('\n').map(r => r.trim()).filter(r => r);
+        for(let i=1; i<rows.length; i++) {
+          const cols = rows[i].split(',');
+          if(cols.length >= 4) {
+            const date = cols[0].trim();
+            const desc = cols[1].trim();
+            const cat = cols[2].trim();
+            let amountStr = cols[3].replace(/"/g, '').replace(' TL', '').trim();
+            const amt = parseFloat(amountStr);
+            if(!isNaN(amt)) {
+              importedTx.push({
+                id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2,9),
+                isoDate: date,
+                description: desc,
+                category: cat,
+                amount: Math.abs(amt).toFixed(2),
+                type: amt >= 0 ? 'income' : 'expense'
+              });
+            }
+          }
+        }
+      } else {
+        const payload = JSON.parse(text);
+        if(payload.transactions) importedTx = payload.transactions;
+        else if(Array.isArray(payload)) importedTx = payload;
+        
+        if(payload.budgets && checkAuth()) await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), payload.budgets);
+        if(payload.customCategories && checkAuth()) await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: payload.customCategories }, { merge: true });
+      }
+
+      const newItems = [];
+      for(const item of importedTx) {
+        const exists = transactions.find(t => t.id === item.id || (t.description === item.description && t.isoDate === item.isoDate && Math.abs(t.amount) == Math.abs(item.amount)));
+        if(!exists) {
+          if(!item.id) item.id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+          transactions.push(item);
+          newItems.push(item);
         }
       }
-      if(payload.budgets) await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), payload.budgets);
-      if(payload.customCategories) await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: payload.customCategories }, { merge: true });
-      alert('İçe aktarma başarılı (Buluta eklendi)');
-    }catch(err){ alert('Geçersiz dosya'); console.error(err); }
+
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+      if(typeof updateApp === 'function') updateApp(); else updateUI();
+
+      if(checkAuth() && newItems.length > 0) {
+        for(const t of newItems) {
+           const txData = { description: t.description, amount: t.amount, type: t.type, category: t.category, isoDate: t.isoDate, createdAt: Date.now() };
+           if(t.originalCurrency) txData.originalCurrency = t.originalCurrency;
+           if(t.originalAmount) txData.originalAmount = t.originalAmount;
+           await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+        }
+      }
+
+      alert('Gelişmiş İçe Aktarma Başarılı!\n' + newItems.length + ' yeni işlem eklendi.');
+    } catch(err) {
+      alert('Hata: Dosya yapısı bozuk veya okunamadı.');
+      console.error(err);
+    }
     ev.target.value = '';
   };
   fr.readAsText(file);
+};
+
+window.updateApp = function() {
+  updateUI();
 };
 
 /* ---------- UI State Handlers ---------- */
@@ -1014,6 +1069,7 @@ function updateUI(){
   renderTransactions();
   calculateAndRender();
   populateCategorySelects();
+  checkBudgetAlerts();
 }
 
 /* ---------- Custom category UI functions ---------- */
