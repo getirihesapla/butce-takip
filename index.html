@@ -9,6 +9,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+  .btn-privacy { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s ease; }
+  .btn-privacy:hover { opacity: 0.7; }
+  body.privacy-active .privacy-mask { filter: blur(6px); transition: filter 0.3s ease; user-select: none; }
+  body:not(.privacy-active) .privacy-mask { transition: filter 0.3s ease; }
 /* ---------------- Theme variables ---------------- */
 :root{
   --primary:#294065;
@@ -161,8 +165,21 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 
   <div id="app" style="display:none">
     <div class="balance card" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-      <div>
-        Mevcut Bakiye: <span id="currentBalance">0.00 TL</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div>Mevcut Bakiye: <strong id="currentBalance" class="privacy-mask" style="font-size:1.2rem;">0.00 TL</strong></div>
+        <button id="privacy-toggle" class="btn-privacy" onclick="togglePrivacy()" title="Gizlilik Modu">
+          <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="var(--text-main)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+            <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+          </svg>
+          <svg id="eye-closed" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="var(--text-main)" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" />
+            <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" />
+            <path d="M3 3l18 18" />
+          </svg>
+        </button>
       </div>
       <div style="display:flex; gap:6px;">
         <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('TRY')">TRY</button>
@@ -218,9 +235,9 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
         <hr>
         <h3 class="section-title" style="margin-top:16px">💱 Döviz Cüzdanı</h3>
         <div id="walletContainer" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>USD Bakiye:</span><strong id="walletUSD">$0.00</strong></div>
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>EUR Bakiye:</span><strong id="walletEUR">€0.00</strong></div>
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>Altın Bakiye:</span><strong id="walletGAU">0.00 Gram</strong></div>
+          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>USD Bakiye:</span><strong id="walletUSD" class="privacy-mask">$0.00</strong></div>
+          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>EUR Bakiye:</span><strong id="walletEUR" class="privacy-mask">€0.00</strong></div>
+          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>Altın Bakiye:</span><strong id="walletGAU" class="privacy-mask">0.00 Gram</strong></div>
         </div>
 
       </div>
@@ -273,7 +290,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
           </div>
           <div style="width:190px;text-align:center">
             <div class="small">Net</div>
-            <div id="net" style="font-weight:800;font-size:1.1rem">0.00 TL</div>
+            <div id="net" class="privacy-mask" style="font-weight:800;font-size:1.1rem">0.00 TL</div>
             <div style="margin-top:8px">
               <button class="btn-primary" onclick="generatePdf()">PDF İndir</button>
             </div>
@@ -363,6 +380,21 @@ function formatCurrency(amount, currency) {
   const sym = {'TRY':' TL', 'USD':' $', 'EUR':' €', 'GBP':' £', 'GAU':' Gram'}[currency] || '';
   const num = Number(amount).toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
   return num + sym;
+}
+
+function togglePrivacy() {
+  const isPrivacyActive = document.body.classList.toggle('privacy-active');
+  localStorage.setItem('privacyMode', isPrivacyActive ? 'true' : 'false');
+  document.getElementById('eye-open').style.display = isPrivacyActive ? 'none' : 'block';
+  document.getElementById('eye-closed').style.display = isPrivacyActive ? 'block' : 'none';
+}
+
+if (localStorage.getItem('privacyMode') === 'true') {
+  document.body.classList.add('privacy-active');
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('eye-open').style.display = 'none';
+    document.getElementById('eye-closed').style.display = 'block';
+  });
 }
 let balance = 0;
 let editingId = null;
@@ -577,7 +609,7 @@ function renderTransactions(list = transactions){
     left.innerHTML = `<div class="cat-badge" style="background:${getCategoryColor(t.category)}22;color:${getCategoryColor(t.category)}">${t.category}</div>
       <div><div style="font-weight:700">${t.description}</div><div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
     const right = document.createElement('div'); right.className='tx-right';
-    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
+    const amt = document.createElement('div'); amt.className = 'tx-amount privacy-mask ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
     const sign = t.type === 'expense' ? '- ' : '+ ';
     const dispAmt = t.originalCurrency ? formatCurrency(Math.abs(t.originalAmount), t.originalCurrency) : formatTL(Math.abs(t.amount));
     amt.textContent = sign + dispAmt;
@@ -605,9 +637,9 @@ function calculateAndRender(){
 
   const maxv = Math.max(convInc, convExp, 1);
   incomeFill.style.width = (convInc / maxv * 100) + '%'; 
-  incomeFill.textContent = convInc > 0 ? formatCurrency(convInc, globalDisplayCurrency) : '';
+  incomeFill.innerHTML = convInc > 0 ? '<span class="privacy-mask">' + formatCurrency(convInc, globalDisplayCurrency) + '</span>' : '';
   expenseFill.style.width = (convExp / maxv * 100) + '%'; 
-  expenseFill.textContent = convExp > 0 ? formatCurrency(convExp, globalDisplayCurrency) : '';
+  expenseFill.innerHTML = convExp > 0 ? '<span class="privacy-mask">' + formatCurrency(convExp, globalDisplayCurrency) + '</span>' : '';
 
   const expenseByCat = {};
   let texp = 0;
