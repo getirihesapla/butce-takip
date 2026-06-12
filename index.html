@@ -172,8 +172,8 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
     <div class="balance card" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <div>Mevcut Bakiye: <strong id="currentBalance" class="privacy-mask" style="font-size:1.2rem;">0.00 TL</strong></div>
-        <button id="privacy-toggle" class="btn-privacy" onclick="togglePrivacy()" title="Gizlilik Modu">
-          <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="var(--text-main)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <button id="privacy-toggle" class="btn-privacy" title="Gizlilik Modu">
+          <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" stroke="var(--text-main)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
             <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
@@ -367,6 +367,7 @@ const SUPPORTED_CURRENCIES = ['TRY','USD','EUR','GBP','GAU'];
 /* ---------- State ---------- */
 let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
+let isPrivacyActive = JSON.parse(localStorage.getItem('privacyMode')) || false;
 let globalDisplayCurrency = 'TRY';
 
 window.setGlobalCurrency = function(cur) {
@@ -388,29 +389,34 @@ function formatCurrency(amount, currency) {
 }
 
 function getMaskedOrReal(amount, currency) {
-  if (document.body.classList.contains('privacy-active')) {
+  if (isPrivacyActive) {
     const sym = {'TRY':' TL', 'USD':' $', 'EUR':' €', 'GBP':' £', 'GAU':' Gram'}[currency] || '';
     return '*****' + sym;
   }
   return formatCurrency(amount, currency);
 }
 
-function togglePrivacy() {
-  const isPrivacyActive = document.body.classList.toggle('privacy-active');
-  localStorage.setItem('privacyMode', isPrivacyActive ? 'true' : 'false');
-  document.getElementById('eye-open').style.display = isPrivacyActive ? 'none' : 'block';
-  document.getElementById('eye-closed').style.display = isPrivacyActive ? 'block' : 'none';
-  renderTransactions();
-  calculateAndRender();
-}
+window.applyPrivacyMask = function() {
+  const eyeOpen = document.getElementById('eye-open');
+  const eyeClosed = document.getElementById('eye-closed');
+  if(eyeOpen) eyeOpen.style.display = isPrivacyActive ? 'none' : 'block';
+  if(eyeClosed) eyeClosed.style.display = isPrivacyActive ? 'block' : 'none';
+  if (isPrivacyActive) document.body.classList.add('privacy-active');
+  else document.body.classList.remove('privacy-active');
+};
 
-if (localStorage.getItem('privacyMode') === 'true') {
-  document.body.classList.add('privacy-active');
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('eye-open').style.display = 'none';
-    document.getElementById('eye-closed').style.display = 'block';
-  });
-}
+document.addEventListener('DOMContentLoaded', () => {
+  const toggleBtn = document.getElementById('privacy-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      isPrivacyActive = !isPrivacyActive;
+      localStorage.setItem('privacyMode', isPrivacyActive);
+      applyPrivacyMask();
+      if (typeof updateApp === 'function') updateApp();
+    });
+  }
+  applyPrivacyMask();
+});
 let balance = 0;
 let editingId = null;
 let exchangeRates = {TRY:1, USD:0.036, EUR:0.033, GBP:0.028}; 
@@ -488,14 +494,18 @@ function startListeners(uid) {
   });
 
   unsubscribeTransactions = onSnapshot(collection(db, "users", uid, "transactions"), (snap) => {
-    transactions = [];
+    const newTx = [];
     let calcBalance = 0;
     snap.forEach(d => {
       const t = d.data();
-      transactions.push({ id: d.id, ...t });
+      newTx.push({ id: d.id, ...t });
       calcBalance = parseFloat((calcBalance + Number(t.amount)).toFixed(2));
     });
-    balance = calcBalance;
+    if (newTx.length > 0 || snap.metadata.hasPendingWrites || (snap.empty && transactions.length === 0)) {
+      transactions = newTx;
+      balance = calcBalance;
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+    }
     applyFilters();
     calculateAndRender();
   });
@@ -1065,6 +1075,7 @@ window.clearAll = async function(){
 };
 
 function updateUI(){
+  if (typeof applyPrivacyMask === 'function') applyPrivacyMask();
   document.getElementById('currentBalance').textContent = formatTL(balance);
   renderTransactions();
   calculateAndRender();
