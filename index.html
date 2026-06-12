@@ -217,7 +217,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
           <input id="date" type="date">
           <input id="amount" type="number" placeholder="Miktar">
         </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:12px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:12px; margin-bottom:12px;">
           <select id="type">
             <option value="income">Gelir</option>
             <option value="expense">Gider</option>
@@ -228,6 +228,14 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
+          </select>
+          <select id="installment" title="Taksit Sayısı">
+            <option value="1">Peşin (1)</option>
+            <option value="2">2 Taksit</option>
+            <option value="3">3 Taksit</option>
+            <option value="6">6 Taksit</option>
+            <option value="9">9 Taksit</option>
+            <option value="12">12 Taksit</option>
           </select>
         </div>
         <div style="display:flex; gap:12px;">
@@ -584,16 +592,49 @@ window.addTransaction = async function(){
   const desc = descEl.value.trim(); const amtRaw = parseFloat(amountEl.value); const typ = typeEl.value; const cat = categoryInput.value; const dateVal = dateEl.value; const cur = inputCurrency.value;
   if(!desc || isNaN(amtRaw) || amtRaw<=0 || !cat || !dateVal){ alert('Lütfen tüm alanları doldurun.'); return; }
   const amountTRY = convertToTRY(amtRaw, cur);
-  const txData = { description:desc, amount: typ==='expense'? -Math.abs(amountTRY): Math.abs(amountTRY), type:typ, category:cat, isoDate:dateVal, createdAt: Date.now() };
+  const totalAmount = typ === 'expense' ? -Math.abs(amountTRY) : Math.abs(amountTRY);
   
   if(editingId !== null){
+    const txData = { description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now() };
     await updateDoc(doc(db, "users", currentUser.uid, "transactions", editingId), txData);
     editingId = null;
     document.getElementById('cancelEdit').style.display='none';
   } else {
-    await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+    const instSelect = document.getElementById('installment');
+    const installmentCount = instSelect ? parseInt(instSelect.value) || 1 : 1;
+    
+    if (installmentCount === 1) {
+      const txData = { description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now() };
+      await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+    } else {
+      const monthlyAmountStr = (totalAmount / installmentCount).toFixed(2);
+      const monthlyAmount = parseFloat(monthlyAmountStr);
+      let [year, month, day] = dateVal.split('-').map(Number);
+      
+      const promises = [];
+      for (let i = 0; i < installmentCount; i++) {
+        let d = new Date(year, month - 1 + i, day);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        const instDateStr = `${y}-${m}-${dayStr}`;
+        
+        const txData = { 
+          description: `${desc} [Taksit ${i + 1}/${installmentCount}]`, 
+          amount: monthlyAmount, 
+          type: typ, 
+          category: cat, 
+          isoDate: instDateStr, 
+          createdAt: Date.now() + i 
+        };
+        promises.push(addDoc(collection(db, "users", currentUser.uid, "transactions"), txData));
+      }
+      await Promise.all(promises);
+    }
   }
   descEl.value=''; amountEl.value=''; categoryInput.value=''; dateEl.value = new Date().toISOString().slice(0,10);
+  const instEl = document.getElementById('installment');
+  if(instEl) instEl.value = '1';
 };
 
 window.startEdit = function(id){
