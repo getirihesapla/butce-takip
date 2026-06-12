@@ -11,8 +11,7 @@
 <style>
   .btn-privacy { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s ease; }
   .btn-privacy:hover { opacity: 0.7; }
-  body.privacy-active .privacy-mask { filter: blur(6px); transition: filter 0.3s ease; user-select: none; }
-  body:not(.privacy-active) .privacy-mask { transition: filter 0.3s ease; }
+  /* Masking is now done via text replacement (*****) */
 /* ---------------- Theme variables ---------------- */
 :root{
   --primary:#294065;
@@ -360,8 +359,8 @@ const KEYLESS_FALLBACK_URL = 'https://open.er-api.com/v6/latest/TRY';
 const SUPPORTED_CURRENCIES = ['TRY','USD','EUR','GBP','GAU'];
 
 /* ---------- State ---------- */
-let transactions = [];
-let budgets = {};
+let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
 let globalDisplayCurrency = 'TRY';
 
 window.setGlobalCurrency = function(cur) {
@@ -382,11 +381,21 @@ function formatCurrency(amount, currency) {
   return num + sym;
 }
 
+function getMaskedOrReal(amount, currency) {
+  if (document.body.classList.contains('privacy-active')) {
+    const sym = {'TRY':' TL', 'USD':' $', 'EUR':' €', 'GBP':' £', 'GAU':' Gram'}[currency] || '';
+    return '*****' + sym;
+  }
+  return formatCurrency(amount, currency);
+}
+
 function togglePrivacy() {
   const isPrivacyActive = document.body.classList.toggle('privacy-active');
   localStorage.setItem('privacyMode', isPrivacyActive ? 'true' : 'false');
   document.getElementById('eye-open').style.display = isPrivacyActive ? 'none' : 'block';
   document.getElementById('eye-closed').style.display = isPrivacyActive ? 'block' : 'none';
+  renderTransactions();
+  calculateAndRender();
 }
 
 if (localStorage.getItem('privacyMode') === 'true') {
@@ -609,9 +618,9 @@ function renderTransactions(list = transactions){
     left.innerHTML = `<div class="cat-badge" style="background:${getCategoryColor(t.category)}22;color:${getCategoryColor(t.category)}">${t.category}</div>
       <div><div style="font-weight:700">${t.description}</div><div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
     const right = document.createElement('div'); right.className='tx-right';
-    const amt = document.createElement('div'); amt.className = 'tx-amount privacy-mask ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
+    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
     const sign = t.type === 'expense' ? '- ' : '+ ';
-    const dispAmt = t.originalCurrency ? formatCurrency(Math.abs(t.originalAmount), t.originalCurrency) : formatTL(Math.abs(t.amount));
+    const dispAmt = t.originalCurrency ? getMaskedOrReal(Math.abs(t.originalAmount), t.originalCurrency) : getMaskedOrReal(Math.abs(t.amount), 'TRY');
     amt.textContent = sign + dispAmt;
     const act = document.createElement('div'); act.className='action-btns';
     act.innerHTML = `<button class="btn-accent" style="padding:6px 8px;" onclick="window.startEdit('${t.id}')">Düzenle</button>
@@ -632,14 +641,17 @@ function calculateAndRender(){
   const convInc = convertFromTRY(totalIncome, globalDisplayCurrency);
   const convExp = convertFromTRY(totalExpense, globalDisplayCurrency);
   
-  currentBalanceEl.textContent = formatCurrency(convBal, globalDisplayCurrency);
-  netEl.textContent = formatCurrency(convInc - convExp, globalDisplayCurrency);
+  currentBalanceEl.textContent = getMaskedOrReal(convBal, globalDisplayCurrency);
+  netEl.textContent = getMaskedOrReal(convInc - convExp, globalDisplayCurrency);
 
   const maxv = Math.max(convInc, convExp, 1);
   incomeFill.style.width = (convInc / maxv * 100) + '%'; 
-  incomeFill.innerHTML = convInc > 0 ? '<span class="privacy-mask">' + formatCurrency(convInc, globalDisplayCurrency) + '</span>' : '';
+  incomeFill.textContent = convInc > 0 ? getMaskedOrReal(convInc, globalDisplayCurrency) : '';
   expenseFill.style.width = (convExp / maxv * 100) + '%'; 
-  expenseFill.innerHTML = convExp > 0 ? '<span class="privacy-mask">' + formatCurrency(convExp, globalDisplayCurrency) + '</span>' : '';
+  expenseFill.textContent = convExp > 0 ? getMaskedOrReal(convExp, globalDisplayCurrency) : '';
+
+  localStorage.setItem('transactions', JSON.stringify(transactions));
+  localStorage.setItem('budgets', JSON.stringify(budgets));
 
   const expenseByCat = {};
   let texp = 0;
@@ -675,9 +687,9 @@ function renderWallet() {
   const wUsdEl = document.getElementById('walletUSD');
   const wEurEl = document.getElementById('walletEUR');
   const wGauEl = document.getElementById('walletGAU');
-  if(wUsdEl) wUsdEl.textContent = '$' + wUSD.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  if(wEurEl) wEurEl.textContent = '€' + wEUR.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  if(wGauEl) wGauEl.textContent = wGAU.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Gram';
+  if(wUsdEl) wUsdEl.textContent = getMaskedOrReal(wUSD, 'USD');
+  if(wEurEl) wEurEl.textContent = getMaskedOrReal(wEUR, 'EUR');
+  if(wGauEl) wGauEl.textContent = getMaskedOrReal(wGAU, 'GAU');
 }
 
 /* ---------- Transactions ---------- */
