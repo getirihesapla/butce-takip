@@ -912,7 +912,29 @@ function convertToTRY(amount,currency){
 
 /* ---------- Exchange API ---------- */
 async function fetchExchangeRates(){
-  try{
+  try {
+    // 1. Try fetching from local Turkish API for the most accurate rates (including Gold)
+    try {
+      const rTR = await fetch('https://finans.truncgil.com/today.json');
+      if (rTR.ok) {
+        const dTR = await rTR.json();
+        const parseTR = (str) => parseFloat(str.replace(/\./g, '').replace(',', '.'));
+        
+        exchangeRates = { 'TRY': 1 };
+        if (dTR['USD']) exchangeRates['USD'] = parseTR(dTR['USD']['Satış']);
+        if (dTR['EUR']) exchangeRates['EUR'] = parseTR(dTR['EUR']['Satış']);
+        if (dTR['GBP']) exchangeRates['GBP'] = parseTR(dTR['GBP']['Satış']);
+        if (dTR['gram-altin']) exchangeRates['GAU'] = parseTR(dTR['gram-altin']['Satış']);
+        
+        lastSyncEl.textContent = 'Kurlar: Canlı API ile güncellendi';
+        updateUI();
+        return; // Success
+      }
+    } catch (e) {
+      console.warn("Turkish API failed, falling back...", e);
+    }
+
+    // 2. Fallback to International APIs
     let data = null;
     let ratesSource = null;
     if(EXCHANGE_API_BASE_URL){
