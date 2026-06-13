@@ -6,6 +6,9 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Bütçe Takip | Gelir & Gider (Dinamik Kategorili)</title>
 
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <!-- jsPDF CDN for PDF export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -328,10 +331,15 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
 
         <hr>
 
-        <div style="text-align:center">
-          <p class="small">Kategori Harcama Payı</p>
-          <div id="pie" style="width:150px;height:150px;margin:8px auto;border-radius:50%;border:4px solid var(--primary)"></div>
-          <div id="pieLegend"></div>
+        <div style="text-align:center; padding:10px;">
+          <p class="small" style="margin-bottom:12px; font-weight:600;">Kategori Harcama Payı</p>
+          <div style="height:220px; width:100%; position:relative;">
+            <canvas id="pieChart"></canvas>
+          </div>
+          <p class="small" style="margin-top:24px; margin-bottom:12px; font-weight:600;">Aylık Trend</p>
+          <div style="height:220px; width:100%; position:relative;">
+            <canvas id="lineChart"></canvas>
+          </div>
         </div>
 
       </div>
@@ -671,15 +679,20 @@ function renderTransactions(list = transactions){
   }
 }
 
-function calculateAndRender(){
+function calculateAndRender(dataList = transactions){
   let totalIncome = 0, totalExpense = 0;
-  for(const t of transactions){
+  for(const t of dataList){
     if(t.type === 'income') totalIncome = parseFloat((totalIncome + Number(t.amount)).toFixed(2));
     else totalExpense = parseFloat((totalExpense + Math.abs(Number(t.amount))).toFixed(2));
   }
-  balance = parseFloat((totalIncome - totalExpense).toFixed(2));
   
-  const convBal = convertFromTRY(balance, globalDisplayCurrency);
+  if (dataList === transactions) {
+    balance = parseFloat((totalIncome - totalExpense).toFixed(2));
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    localStorage.setItem('budgets', JSON.stringify(budgets));
+  }
+
+  const convBal = convertFromTRY(dataList === transactions ? balance : parseFloat((totalIncome - totalExpense).toFixed(2)), globalDisplayCurrency);
   const convInc = convertFromTRY(totalIncome, globalDisplayCurrency);
   const convExp = convertFromTRY(totalExpense, globalDisplayCurrency);
   
@@ -692,25 +705,23 @@ function calculateAndRender(){
   expenseFill.style.width = (convExp / maxv * 100) + '%'; 
   expenseFill.textContent = convExp > 0 ? getMaskedOrReal(convExp, globalDisplayCurrency) : '';
 
-  localStorage.setItem('transactions', JSON.stringify(transactions));
-  localStorage.setItem('budgets', JSON.stringify(budgets));
-
+  // Draw Dynamic Chart.js Instances
   const expenseByCat = {};
-  let texp = 0;
-  for(const tx of transactions){ if(tx.type==='expense'){ expenseByCat[tx.category] = parseFloat(((expenseByCat[tx.category]||0) + Math.abs(Number(tx.amount))).toFixed(2)); texp = parseFloat((texp + Math.abs(Number(tx.amount))).toFixed(2)); } }
-  if(texp === 0){ pieEl.style.backgroundImage = 'conic-gradient(#ddd 0% 100%)'; pieLegendEl.innerHTML = '<div class="small">Harcanan gider yok.</div>'; }
-  else{
-    let segs=[],deg=0,legend='';
-    for(const cat in expenseByCat){
-      const amt = expenseByCat[cat]; const perc = amt/texp; const start = deg; const end = deg + perc*360;
-      const color = getCategoryColor(cat);
-      segs.push(`${color} ${start}deg ${end}deg`);
-      legend += `<div class="legend-item"><span class="color-box" style="background:${color}"></span> ${cat}: ${(perc*100).toFixed(1)}%</div>`;
-      deg = end;
+  const lineData = {};
+  
+  for(const tx of dataList){ 
+    const dateStr = tx.isoDate.slice(0,10);
+    if(!lineData[dateStr]) lineData[dateStr] = { inc:0, exp:0 };
+    
+    if(tx.type==='expense'){ 
+      expenseByCat[tx.category] = parseFloat(((expenseByCat[tx.category]||0) + Math.abs(Number(tx.amount))).toFixed(2)); 
+      lineData[dateStr].exp += Math.abs(Number(tx.amount));
+    } else {
+      lineData[dateStr].inc += Math.abs(Number(tx.amount));
     }
-    pieEl.style.backgroundImage = `conic-gradient(${segs.join(',')})`;
-    pieLegendEl.innerHTML = legend;
   }
+
+  drawCharts(expenseByCat, lineData);
 
   renderBudgetList();
   checkBudgetAlerts();
@@ -833,12 +844,63 @@ window.applyFilters = function(){
   if(e) filtered = filtered.filter(t=>t.isoDate <= e);
   if(q) filtered = filtered.filter(t=> (t.description || '').toLowerCase().includes(q));
   renderTransactions(filtered);
-  let ti=0, te=0;
-  for(const t of filtered){ if(t.type==='income') ti = parseFloat((ti + Number(t.amount)).toFixed(2)); else te = parseFloat((te + Math.abs(Number(t.amount))).toFixed(2)); }
-  const maxv = Math.max(ti,te,1);
-  incomeFill.style.width = (ti / maxv * 100) + '%'; incomeFill.textContent = ti>0? formatTL(ti):'';
-  expenseFill.style.width = (te / maxv * 100) + '%'; expenseFill.textContent = te>0? formatTL(te):'';
-  netEl.textContent = formatTL(ti-te);
+  calculateAndRender(filtered);
+};
+
+window.drawCharts = function(expenseByCat, lineData) {
+  if (window.myPieChart) window.myPieChart.destroy();
+  if (window.myLineChart) window.myLineChart.destroy();
+
+  const pieCtx = document.getElementById('pieChart');
+  const lineCtx = document.getElementById('lineChart');
+  if(!pieCtx || !lineCtx) return;
+
+  const catLabels = Object.keys(expenseByCat);
+  const catData = Object.values(expenseByCat);
+  const catColors = catLabels.map(c => getCategoryColor(c));
+
+  window.myPieChart = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: catLabels.length ? catLabels : ['Veri Yok'],
+      datasets: [{
+        data: catData.length ? catData : [1],
+        backgroundColor: catData.length ? catColors : ['#334155'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim() } }
+      }
+    }
+  });
+
+  const dates = Object.keys(lineData).sort();
+  const incData = dates.map(d => lineData[d].inc);
+  const expData = dates.map(d => lineData[d].exp);
+
+  window.myLineChart = new Chart(lineCtx, {
+    type: 'line',
+    data: {
+      labels: dates.length ? dates : ['Veri Yok'],
+      datasets: [
+        { label: 'Gelir', data: dates.length ? incData : [0], borderColor: '#17a2b8', backgroundColor: 'rgba(23, 162, 184, 0.1)', tension: 0.3, fill: true },
+        { label: 'Gider', data: dates.length ? expData : [0], borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.1)', tension: 0.3, fill: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+      },
+      plugins: {
+        legend: { position: 'top', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim() } }
+      }
+    }
+  });
 };
 
 /* ---------- Budgets & Alerts ---------- */
