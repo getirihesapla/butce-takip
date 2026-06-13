@@ -476,8 +476,17 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
       </div>
 
       <!-- Middle: form + charts -->
-      <div class="card">
+      <div class="card" id="transactionFormCard">
         <h3 class="section-title">Yeni İşlem / Raporlar</h3>
+        
+        <!-- Akıllı Ekle (Smart Input) -->
+        <div style="display:flex; gap:8px; margin-bottom:16px; background:rgba(59, 130, 246, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(59, 130, 246, 0.2);">
+          <input id="smartInput" placeholder="Örn: Dün migrostan 500 tl alışveriş yaptım" style="flex:1; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px 12px; background:var(--bg-body); color:var(--text-main); outline:none;" onkeypress="if(event.key==='Enter') parseSmartInput()">
+          <button class="btn-primary" style="padding:8px 16px; display:flex; align-items:center; gap:6px; background:#3b82f6;" onclick="parseSmartInput()">
+            <span style="font-size:1.1rem">🪄</span> Çözümle
+          </button>
+        </div>
+
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:12px;">
           <input id="desc" placeholder="Açıklama" style="grid-column: 1 / -1;">
           <input id="date" type="date">
@@ -1091,6 +1100,90 @@ window.calculateAssetWallet = function() {
   if(wUsdEl) wUsdEl.textContent = getMaskedOrReal(totalUSD, 'USD');
   if(wEurEl) wEurEl.textContent = getMaskedOrReal(totalEUR, 'EUR');
   if(wGoldEl) wGoldEl.textContent = getMaskedOrReal(totalGOLD, 'GAU');
+};
+
+/* ---------- Smart Input Logic ---------- */
+window.parseSmartInput = function() {
+  const inputEl = document.getElementById('smartInput');
+  const text = inputEl.value.trim().toLowerCase();
+  if (!text) return;
+
+  let amount = '';
+  let dateStr = new Date().toISOString().slice(0, 10);
+  let type = 'expense';
+  let category = '';
+  let desc = inputEl.value.trim(); // Original case
+
+  // 1. Amount Extraction
+  const amountMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:tl|₺|lira|usd|\$|eur|€|sterlin|pound|£)/i);
+  if (amountMatch) {
+    amount = amountMatch[1].replace(',', '.');
+    desc = desc.replace(new RegExp(amountMatch[0], 'i'), '').trim();
+  } else {
+    // Just find any stand-alone number
+    const numMatch = text.match(/\b(\d+(?:[.,]\d+)?)\b/);
+    if (numMatch) {
+      amount = numMatch[1].replace(',', '.');
+      desc = desc.replace(new RegExp(numMatch[0], 'i'), '').trim();
+    }
+  }
+
+  // 2. Date Extraction
+  if (text.includes('dün')) {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    dateStr = d.toISOString().slice(0, 10);
+    desc = desc.replace(/dün/i, '').trim();
+  } else if (text.includes('bugün')) {
+    desc = desc.replace(/bugün/i, '').trim();
+  } else {
+    const dateMatch = text.match(/(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{4})/);
+    if (dateMatch) {
+      dateStr = `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`;
+      desc = desc.replace(dateMatch[0], '').trim();
+    }
+  }
+
+  // 3. Category & Type Mapping
+  const incomeKeywords = ['maaş', 'ücret', 'gelir', 'gönderdi', 'yattı'];
+  const marketKeywords = ['market', 'migros', 'şok', 'a101', 'bim', 'carrefour', 'alışveriş', 'bakkal', 'manav', 'kasap'];
+  const foodKeywords = ['yemek', 'starbucks', 'kahve', 'restoran', 'lokanta', 'pide', 'kebap', 'pizza', 'burger'];
+  const transportKeywords = ['benzin', 'akaryakıt', 'petrol', 'shell', 'opet', 'bp', 'taksi', 'otobüs', 'uçak', 'bilet', 'ulaşım', 'metro'];
+  const billKeywords = ['fatura', 'elektrik', 'su', 'doğalgaz', 'internet', 'telefon', 'turkcell', 'vodafone', 'ttnet', 'telekom'];
+
+  if (incomeKeywords.some(kw => text.includes(kw))) {
+    type = 'income';
+    category = 'Maaş'; // Fallback
+    const cats = ['Maaş', 'Yatırım', 'Diğer Gelir', ...customCategories.filter(c=>c.type==='income').map(c=>c.name)];
+    if (text.includes('maaş')) category = 'Maaş';
+  } else {
+    type = 'expense';
+    if (marketKeywords.some(kw => text.includes(kw))) category = 'Market / Mutfak';
+    else if (foodKeywords.some(kw => text.includes(kw))) category = 'Yeme-İçme';
+    else if (transportKeywords.some(kw => text.includes(kw))) category = 'Ulaşım / Araç';
+    else if (billKeywords.some(kw => text.includes(kw))) category = 'Fatura / Aidat';
+  }
+
+  // Fill form
+  document.getElementById('desc').value = desc.replace(/\s+/g, ' ').replace(/tl|lira|₺/gi, '').trim();
+  if (amount) document.getElementById('amount').value = amount;
+  document.getElementById('date').value = dateStr;
+  document.getElementById('type').value = type;
+  toggleTransferFields();
+  
+  if (category) {
+    const catInput = document.getElementById('categoryInput');
+    let found = Array.from(catInput.options).some(opt => opt.value === category);
+    if (found) catInput.value = category;
+  }
+
+  // Visual feedback
+  const formArea = document.getElementById('transactionFormCard');
+  if (formArea) {
+    formArea.style.transition = 'box-shadow 0.3s ease';
+    formArea.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.5)';
+    setTimeout(() => formArea.style.boxShadow = 'none', 1000);
+  }
 };
 
 /* ---------- Transactions ---------- */
