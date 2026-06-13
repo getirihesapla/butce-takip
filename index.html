@@ -947,9 +947,18 @@ window.startEdit = function(id){
 window.cancelEdit = function(){ editingId = null; descEl.value=''; amountEl.value=''; typeEl.value='income'; categoryInput.value=''; dateEl.value=new Date().toISOString().slice(0,10); document.getElementById('cancelEdit').style.display='none'; };
 
 window.removeTx = async function(id){
-  if(!checkAuth()) return;
   if(!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
-  await deleteDoc(doc(db, "users", currentUser.uid, "transactions", id));
+  
+  transactions = transactions.filter(t => t.id !== id);
+  localStorage.setItem('transactions', JSON.stringify(transactions));
+  
+  if (currentUser) {
+    try {
+      await deleteDoc(doc(db, "users", currentUser.uid, "transactions", id));
+    } catch(e) { console.error("Firebase delete error:", e); }
+  }
+  
+  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
 };
 
 /* ---------- Filters ---------- */
@@ -1382,9 +1391,17 @@ window.addGoal = async function() {
 
 window.deleteGoal = async function(id, catName) {
   if(!confirm('Bu hedefi silmek istediğinize emin misiniz?')) return;
+  
   financialGoals = financialGoals.filter(g => g.id !== id);
-  await window.saveGoals();
-  window.renderGoals();
+  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
+  
+  if (currentUser) {
+    try {
+      await window.saveGoals();
+    } catch(e) { console.error("Firebase goal delete error:", e); }
+  }
+  
+  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
 };
 
 window.renderGoals = function() {
