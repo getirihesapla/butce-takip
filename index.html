@@ -22,6 +22,13 @@
   .alert-info { border-left: 4px solid #3b82f6; }
   .alert-close { position: absolute; top: 8px; right: 8px; cursor: pointer; color: var(--text-muted); font-size: 14px; font-weight: bold; }
   .alert-close:hover { color: var(--text-main); }
+  /* Asset Wallet Card */
+  .asset-wallet-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-top: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  :root[data-theme="dark"] .asset-wallet-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .asset-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+  .asset-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .asset-label { color: var(--text-muted); font-weight: 500; }
+  .asset-value { color: var(--text-main); font-weight: 700; }
 /* ---------------- Theme variables ---------------- */
 :root{
   --primary:#294065;
@@ -265,11 +272,14 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
         <div id="customCategoryList" class="small"></div>
 
         <hr>
-        <h3 class="section-title" style="margin-top:16px">💱 Döviz Cüzdanı</h3>
-        <div id="walletContainer" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>USD Bakiye:</span><strong id="walletUSD" class="privacy-mask">$0.00</strong></div>
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>EUR Bakiye:</span><strong id="walletEUR" class="privacy-mask">€0.00</strong></div>
-          <div style="display:flex; justify-content:space-between; padding:8px; background:rgba(0,0,0,0.03); border-radius:8px;"><span>Altın Bakiye:</span><strong id="walletGAU" class="privacy-mask">0.00 Gram</strong></div>
+        <div class="card asset-wallet-card">
+          <h3 class="section-title" style="margin-bottom:12px; font-size:1.05rem;">💱 Döviz & Varlık Cüzdanı</h3>
+          <div id="walletContainer">
+            <div class="asset-row"><span class="asset-label">🇹🇷 TRY Cüzdanı</span><strong id="walletTRY" class="asset-value privacy-mask">0,00 ₺</strong></div>
+            <div class="asset-row"><span class="asset-label">🇺🇸 USD Cüzdanı</span><strong id="walletUSD" class="asset-value privacy-mask">$0.00</strong></div>
+            <div class="asset-row"><span class="asset-label">🇪🇺 EUR Cüzdanı</span><strong id="walletEUR" class="asset-value privacy-mask">0.00 €</strong></div>
+            <div class="asset-row"><span class="asset-label">🟡 ALTIN Cüzdanı</span><strong id="walletGOLD" class="asset-value privacy-mask">0.00 gr</strong></div>
+          </div>
         </div>
 
       </div>
@@ -725,25 +735,31 @@ function calculateAndRender(dataList = transactions){
 
   renderBudgetList();
   checkBudgetAlerts();
-  renderWallet();
+  calculateAssetWallet();
 }
 
-function renderWallet() {
-  let wUSD = 0, wEUR = 0, wGAU = 0;
-  for(const t of transactions) {
-    if(t.originalCurrency && t.originalCurrency !== 'TRY') {
-      if(t.originalCurrency === 'USD') wUSD += Number(t.originalAmount);
-      else if(t.originalCurrency === 'EUR') wEUR += Number(t.originalAmount);
-      else if(t.originalCurrency === 'GAU') wGAU += Number(t.originalAmount);
-    }
+window.calculateAssetWallet = function() {
+  let totalTRY = 0, totalUSD = 0, totalEUR = 0, totalGOLD = 0;
+  for (const t of transactions) {
+    const cur = t.originalCurrency || 'TRY';
+    const amount = Number(t.originalAmount !== undefined ? t.originalAmount : (t.type === 'expense' ? -Math.abs(t.amount) : Math.abs(t.amount)));
+    
+    if (cur === 'TRY') totalTRY += amount;
+    else if (cur === 'USD') totalUSD += amount;
+    else if (cur === 'EUR') totalEUR += amount;
+    else if (cur === 'GAU') totalGOLD += amount;
   }
+
+  const wTryEl = document.getElementById('walletTRY');
   const wUsdEl = document.getElementById('walletUSD');
   const wEurEl = document.getElementById('walletEUR');
-  const wGauEl = document.getElementById('walletGAU');
-  if(wUsdEl) wUsdEl.textContent = getMaskedOrReal(wUSD, 'USD');
-  if(wEurEl) wEurEl.textContent = getMaskedOrReal(wEUR, 'EUR');
-  if(wGauEl) wGauEl.textContent = getMaskedOrReal(wGAU, 'GAU');
-}
+  const wGoldEl = document.getElementById('walletGOLD');
+  
+  if(wTryEl) wTryEl.textContent = getMaskedOrReal(totalTRY, 'TRY');
+  if(wUsdEl) wUsdEl.textContent = getMaskedOrReal(totalUSD, 'USD');
+  if(wEurEl) wEurEl.textContent = getMaskedOrReal(totalEUR, 'EUR');
+  if(wGoldEl) wGoldEl.textContent = getMaskedOrReal(totalGOLD, 'GAU');
+};
 
 /* ---------- Transactions ---------- */
 window.addTransaction = async function(){
