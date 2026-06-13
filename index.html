@@ -6,11 +6,19 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Bütçe Takip | Gelir & Gider (Dinamik Kategorili)</title>
 
+<!-- Preconnect & DNS Prefetch for External APIs -->
+<link rel="preconnect" href="https://api.exchangerate-api.com" crossorigin>
+<link rel="dns-prefetch" href="https://api.exchangerate-api.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
 <!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 
 <!-- jsPDF CDN for PDF export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
 <style>
   .btn-privacy { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s ease; }
@@ -1287,10 +1295,6 @@ window.handleDataImport = function(ev) {
     ev.target.value = '';
   };
   fr.readAsText(file);
-};
-
-window.updateApp = function() {
-  updateUI();
 };
 
 /* ---------- UI State Handlers ---------- */
