@@ -350,30 +350,45 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
   </div>
 
   <div id="app" style="display:none">
-    <div class="balance card" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div>Mevcut Bakiye: <strong id="currentBalance" class="privacy-mask" style="font-size:1.4rem; color:var(--gold-accent);">0.00 TL</strong></div>
-        <button id="privacy-toggle" class="btn-privacy" title="Gizlilik Modu">
-          <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" stroke="var(--text-main)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-            <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
-          </svg>
-          <svg id="eye-closed" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="var(--text-main)" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" />
-            <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" />
-            <path d="M3 3l18 18" />
-          </svg>
-        </button>
+    <div class="balance card" style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="font-size:1.1rem; color:var(--text-main);">Toplam Bakiye:</div>
+          <strong id="currentBalance" class="privacy-mask" style="font-size:1.6rem; color:var(--gold-accent);">0.00 TL</strong>
+          <button id="privacy-toggle" class="btn-privacy" title="Gizlilik Modu">
+            <svg id="eye-open" width="20" height="20" viewBox="0 0 24 24" stroke="var(--text-main)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+              <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+            </svg>
+            <svg id="eye-closed" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="var(--text-main)" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" />
+              <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" />
+              <path d="M3 3l18 18" />
+            </svg>
+          </button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('TRY')">TRY</button>
+          <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('USD')">USD</button>
+          <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('EUR')">EUR</button>
+          <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('GAU')">ALTIN</button>
+        </div>
       </div>
-      <div style="display:flex; gap:6px;">
-        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('TRY')">TRY</button>
-        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('USD')">USD</button>
-        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('EUR')">EUR</button>
-        <button class="btn-muted" style="padding:4px 8px; font-size:0.8rem; border-radius:6px;" onclick="window.setGlobalCurrency('GAU')">ALTIN</button>
+      
+      <!-- Wallets Section -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+          <h4 style="margin:0; font-size:1rem; color:var(--text-main);">Cüzdanlarım</h4>
+          <button class="btn-muted" style="font-size:0.8rem; padding: 4px 8px;" onclick="window.openWalletModal()">+ Yeni Cüzdan</button>
+        </div>
+        <div id="walletList" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; margin-right:-8px; padding-right:8px;">
+          <!-- Populated dynamically -->
+        </div>
       </div>
-      <span class="right small" id="lastSync" style="margin-left:auto;">Kurlar: -</span>
+      
+      <span class="right small" id="lastSync" style="align-self:flex-end;">Kurlar: -</span>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -469,10 +484,13 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
           <input id="amount" type="number" placeholder="Miktar">
         </div>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:12px; margin-bottom:12px;">
-          <select id="type">
+          <select id="type" onchange="toggleTransferFields()">
             <option value="income">Gelir</option>
             <option value="expense">Gider</option>
+            <option value="transfer">Transfer</option>
           </select>
+          <select id="walletInput" title="İşlemin yapılacağı cüzdan"></select>
+          <select id="walletToInput" title="Alıcı cüzdan" style="display:none;"></select>
           <select id="categoryInput"></select>
           <select id="inputCurrency">
             <option value="TRY">TRY</option>
@@ -635,8 +653,12 @@ function removeLocal(key) {
 
 /* ---------- State ---------- */
 let transactions = loadLocal('transactions', []);
+// Backward compatibility for old transactions
+transactions.forEach(t => { if(!t.walletId) t.walletId = 'default'; });
+
 let budgets = loadLocal('budgets', {});
 let isPrivacyActive = loadLocal('privacyMode', false);
+let wallets = loadLocal('wallets', [{id: 'default', name: 'Nakit', type: 'cash', balance: 0}]);
 let globalDisplayCurrency = 'TRY';
 
 window.setGlobalCurrency = function(cur) {
@@ -744,6 +766,9 @@ if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
       isPrivacyActive = loadLocal('privacyMode', false);
       customCategories = loadLocal('customCategories', {income:[], expense:[]});
       financialGoals = loadLocal('financialGoals', []);
+      wallets = loadLocal('wallets', [{id: 'default', name: 'Nakit', type: 'cash', balance: 0}]);
+      
+      transactions.forEach(t => { if(!t.walletId) t.walletId = 'default'; });
       
       window.handleGoogleSuccess(user);
       updateUI();
@@ -766,6 +791,10 @@ function startListeners(uid) {
       const data = snap.data();
       if(data.customCategories) customCategories = data.customCategories;
       if(data.goals) financialGoals = data.goals;
+      if(data.wallets) {
+        wallets = data.wallets;
+        if(window.populateWalletSelects) window.populateWalletSelects();
+      }
     }
     populateCategorySelects();
     renderCustomCategoryList();
@@ -920,11 +949,20 @@ function renderTransactions(list = transactions){
   for(const t of list){
     const li = document.createElement('li'); li.className = 'tx-item';
     const left = document.createElement('div'); left.className='tx-left';
+    let walletInfo = '';
+    const wFrom = wallets.find(w => w.id === t.walletId)?.name || 'Nakit';
+    const wTo = wallets.find(w => w.id === t.walletToId)?.name || 'Nakit';
+    if(t.type === 'transfer') {
+      walletInfo = `<div class="small" style="color:var(--gold-accent)">${wFrom} ➔ ${wTo}</div>`;
+    } else {
+      walletInfo = `<div class="small" style="color:var(--text-muted)">💳 ${wFrom}</div>`;
+    }
     left.innerHTML = `<div class="cat-badge" style="background:${getCategoryColor(t.category)}22;color:${getCategoryColor(t.category)}">${t.category}</div>
-      <div><div style="font-weight:700">${t.description}</div><div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
+      <div><div style="font-weight:700">${t.description}</div>${walletInfo}<div class="small">${new Date(t.isoDate).toLocaleDateString()}</div></div>`;
     const right = document.createElement('div'); right.className='tx-right';
-    const amt = document.createElement('div'); amt.className = 'tx-amount ' + (t.type==='expense'?'expense':'income'); amt.style.minWidth='120px'; amt.style.textAlign='right';
-    const sign = t.type === 'expense' ? '- ' : '+ ';
+    const amtClass = t.type === 'expense' ? 'expense' : (t.type === 'transfer' ? '' : 'income');
+    const amt = document.createElement('div'); amt.className = 'tx-amount ' + amtClass; amt.style.minWidth='120px'; amt.style.textAlign='right';
+    const sign = t.type === 'expense' ? '- ' : (t.type === 'transfer' ? '' : '+ ');
     const dispAmt = t.originalCurrency ? getMaskedOrReal(Math.abs(t.originalAmount), t.originalCurrency) : getMaskedOrReal(Math.abs(t.amount), 'TRY');
     amt.textContent = sign + dispAmt;
     const act = document.createElement('div'); act.className='action-btns';
@@ -938,15 +976,36 @@ function renderTransactions(list = transactions){
 
 function calculateAndRender(dataList = transactions){
   let totalIncome = 0, totalExpense = 0;
+  
+  // Reset wallet balances
+  wallets.forEach(w => w.balance = 0);
+  let wMap = {};
+  wallets.forEach(w => wMap[w.id] = w);
+
   for(const t of dataList){
-    if(t.type === 'income') totalIncome = parseFloat((totalIncome + Number(t.amount)).toFixed(2));
-    else totalExpense = parseFloat((totalExpense + Math.abs(Number(t.amount))).toFixed(2));
+    const amt = Math.abs(Number(t.amount));
+    
+    if (t.type === 'transfer') {
+      if(wMap[t.walletId]) wMap[t.walletId].balance -= amt;
+      if(wMap[t.walletToId]) wMap[t.walletToId].balance += amt;
+      continue; // Skip global income/expense stats for transfers
+    }
+
+    if(t.type === 'income') {
+      totalIncome = parseFloat((totalIncome + amt).toFixed(2));
+      if(wMap[t.walletId]) wMap[t.walletId].balance += amt;
+    } else {
+      totalExpense = parseFloat((totalExpense + amt).toFixed(2));
+      if(wMap[t.walletId]) wMap[t.walletId].balance -= amt;
+    }
   }
   
   if (dataList === transactions) {
-    balance = parseFloat((totalIncome - totalExpense).toFixed(2));
+    balance = Object.values(wMap).reduce((sum, w) => sum + w.balance, 0);
     saveLocal('transactions', transactions);
     saveLocal('budgets', budgets);
+    saveLocal('wallets', wallets);
+    renderWalletList();
   }
 
   const convBal = convertFromTRY(dataList === transactions ? balance : parseFloat((totalIncome - totalExpense).toFixed(2)), globalDisplayCurrency);
@@ -967,6 +1026,7 @@ function calculateAndRender(dataList = transactions){
   const lineData = {};
   
   for(const tx of dataList){ 
+    if (tx.type === 'transfer') continue; // Skip transfers in charts
     const dateStr = tx.isoDate.slice(0,10);
     if(!lineData[dateStr]) lineData[dateStr] = { inc:0, exp:0 };
     
@@ -1011,8 +1071,12 @@ window.calculateAssetWallet = function() {
 /* ---------- Transactions ---------- */
 window.addTransaction = async function(){
   if(!checkAuth()) return;
-  const desc = descEl.value.trim(); const amtRaw = parseFloat(amountEl.value); const typ = typeEl.value; const cat = categoryInput.value; const dateVal = dateEl.value; const cur = inputCurrency.value;
+  const desc = descEl.value.trim(); const amtRaw = parseFloat(amountEl.value); const typ = typeEl.value; const cat = typ==='transfer' ? 'Transfer' : categoryInput.value; const dateVal = dateEl.value; const cur = inputCurrency.value;
+  const wId = document.getElementById('walletInput')?.value || 'default';
+  const wToId = document.getElementById('walletToInput')?.value || 'default';
+  
   if(!desc || isNaN(amtRaw) || amtRaw<=0 || !cat || !dateVal){ alert('Lütfen tüm alanları doldurun.'); return; }
+  if(typ === 'transfer' && wId === wToId) { alert('Gönderen ve alan cüzdan aynı olamaz.'); return; }
   const amountTRY = convertToTRY(amtRaw, cur);
   const totalAmount = typ === 'expense' ? -Math.abs(amountTRY) : Math.abs(amountTRY);
   const totalOriginalAmount = typ === 'expense' ? -Math.abs(amtRaw) : Math.abs(amtRaw);
@@ -1023,7 +1087,8 @@ window.addTransaction = async function(){
   if(editingId !== null){
     const txData = { 
       description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now(),
-      originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate
+      originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate,
+      walletId: wId, walletToId: wToId
     };
     const idx = transactions.findIndex(t => t.id === editingId);
     if(idx !== -1) transactions[idx] = { id: editingId, ...txData };
@@ -1041,7 +1106,8 @@ window.addTransaction = async function(){
     if (installmentCount === 1) {
       const txData = { 
         description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now(),
-        originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate
+        originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate,
+        walletId: wId, walletToId: wToId
       };
       transactions.push({ id: 'local_' + Date.now(), ...txData });
       if (currentUser) {
@@ -1070,7 +1136,8 @@ window.addTransaction = async function(){
           createdAt: Date.now() + i,
           originalCurrency: cur,
           originalAmount: monthlyOrigAmount,
-          exchangeRate: currentRate
+          exchangeRate: currentRate,
+          walletId: wId, walletToId: wToId
         };
         transactions.push({ id: 'local_' + (Date.now() + i), ...txData });
         if (currentUser) {
@@ -1088,6 +1155,8 @@ window.addTransaction = async function(){
   if(instEl) { instEl.value = ''; instEl.style.display = 'none'; }
   const payTypeEl = document.getElementById('paymentType');
   if(payTypeEl) payTypeEl.value = 'pesin';
+  typeEl.value = 'income';
+  if(window.toggleTransferFields) window.toggleTransferFields();
   
   if (firebasePromises.length > 0) {
     try {
@@ -1104,12 +1173,15 @@ window.startEdit = function(id){
   descEl.value = tx.description;
   amountEl.value = Math.abs(tx.amount).toFixed(2);
   typeEl.value = tx.type;
-  categoryInput.value = tx.category;
+  if(window.toggleTransferFields) window.toggleTransferFields();
+  categoryInput.value = tx.category !== 'Transfer' ? tx.category : '';
+  document.getElementById('walletInput').value = tx.walletId || 'default';
+  document.getElementById('walletToInput').value = tx.walletToId || 'default';
   dateEl.value = tx.isoDate;
   document.getElementById('cancelEdit').style.display='inline-block';
 };
 
-window.cancelEdit = function(){ editingId = null; descEl.value=''; amountEl.value=''; typeEl.value='income'; categoryInput.value=''; dateEl.value=new Date().toISOString().slice(0,10); document.getElementById('cancelEdit').style.display='none'; };
+window.cancelEdit = function(){ editingId = null; descEl.value=''; amountEl.value=''; typeEl.value='income'; if(window.toggleTransferFields) window.toggleTransferFields(); categoryInput.value=''; dateEl.value=new Date().toISOString().slice(0,10); document.getElementById('cancelEdit').style.display='none'; };
 
 window.removeTx = async function(id){
   if(!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
@@ -1344,7 +1416,7 @@ window.generatePdf = async function(){
 
 /* ---------- Export / Import ---------- */
 window.exportData = function(){
-  const payload = { transactions, budgets, balance, customCategories };
+  const payload = { transactions, budgets, balance, customCategories, wallets };
   const blob = new Blob([JSON.stringify(payload,null,2)], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download = 'pf_backup_' + new Date().toISOString().slice(0,10) + '.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -1415,7 +1487,17 @@ window.handleDataImport = function(ev) {
       if(isCSV) {} else {
         const payload = JSON.parse(text);
         if(payload.budgets && checkAuth()) firebasePromises.push(setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), payload.budgets));
-        if(payload.customCategories && checkAuth()) firebasePromises.push(setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: payload.customCategories }, { merge: true }));
+        
+        const settingsUpdate = {};
+        if(payload.customCategories) settingsUpdate.customCategories = payload.customCategories;
+        if(payload.wallets) {
+          settingsUpdate.wallets = payload.wallets;
+          wallets = payload.wallets;
+          saveLocal('wallets', wallets);
+        }
+        if(Object.keys(settingsUpdate).length > 0 && checkAuth()) {
+          firebasePromises.push(setDoc(doc(db, "users", currentUser.uid, "settings", "data"), settingsUpdate, { merge: true }));
+        }
       }
 
       alert('Gelişmiş İçe Aktarma Başarılı!\n' + newItems.length + ' yeni işlem eklendi.');
@@ -1475,11 +1557,13 @@ window.clearAll = async function(){
   removeLocal('financialGoals');
   removeLocal('customCategories');
   removeLocal('budgets');
+  removeLocal('wallets');
   
   transactions = [];
   financialGoals = [];
   customCategories = {income:[], expense:[]};
   budgets = {};
+  wallets = [{id: 'default', name: 'Nakit', type: 'cash', balance: 0}];
   
   updateUI();
   if (typeof drawCharts === 'function') drawCharts([]);
@@ -1508,6 +1592,7 @@ function updateUI(){
   if (typeof applyPrivacyMask === 'function') applyPrivacyMask();
   if(window.renderGoals) window.renderGoals();
   populateCategorySelects();
+  if(window.populateWalletSelects) window.populateWalletSelects();
   checkBudgetAlerts();
 }
 
@@ -1800,7 +1885,88 @@ window.addEventListener('appinstalled', () => {
   if(installBtn) installBtn.style.display = 'none';
 });
 
+/* ---------- Wallets Logic ---------- */
+window.openWalletModal = function() {
+  document.getElementById('walletModal').style.display = 'flex';
+};
+window.closeWalletModal = function() {
+  document.getElementById('walletModal').style.display = 'none';
+};
+window.saveWallet = async function() {
+  const name = document.getElementById('newWalletName').value.trim();
+  const type = document.getElementById('newWalletType').value;
+  if (!name) return alert('Cüzdan adı girin.');
+  const newId = 'w_' + Date.now();
+  wallets.push({ id: newId, name: name, type: type, balance: 0 });
+  saveLocal('wallets', wallets);
+  if(checkAuth()) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { wallets: wallets }, { merge: true });
+    } catch(e) { console.error("Firebase sync error for wallets:", e); }
+  }
+  closeWalletModal();
+  updateUI();
+};
+window.toggleTransferFields = function() {
+  const type = document.getElementById('type').value;
+  const catInput = document.getElementById('categoryInput');
+  const wToInput = document.getElementById('walletToInput');
+  if (type === 'transfer') {
+    catInput.style.display = 'none';
+    wToInput.style.display = 'inline-block';
+  } else {
+    catInput.style.display = 'inline-block';
+    wToInput.style.display = 'none';
+  }
+};
+window.populateWalletSelects = function() {
+  const wInput = document.getElementById('walletInput');
+  const wToInput = document.getElementById('walletToInput');
+  if (!wInput || !wToInput) return;
+  wInput.innerHTML = '';
+  wToInput.innerHTML = '';
+  wallets.forEach(w => {
+    wInput.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+    wToInput.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+  });
+};
+window.renderWalletList = function() {
+  const container = document.getElementById('walletList');
+  if (!container) return;
+  container.innerHTML = '';
+  const icons = { 'cash': '💵', 'bank': '🏦', 'credit': '💳', 'crypto': '🪙' };
+  wallets.forEach(w => {
+    const balConv = convertFromTRY(w.balance, globalDisplayCurrency);
+    const text = getMaskedOrReal(balConv, globalDisplayCurrency);
+    container.innerHTML += `
+      <div class="wallet-card" style="background:var(--bg-card); border:1px solid var(--border-color); padding:12px; border-radius:12px; min-width:140px; display:flex; flex-direction:column; gap:4px;">
+        <span style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">${icons[w.type]||'💳'} ${w.name}</span>
+        <strong class="privacy-mask" style="font-size:1.1rem; color:${w.balance >= 0 ? 'var(--text-main)' : '#ef4444'};">${text}</strong>
+      </div>
+    `;
+  });
+};
+
 </script>
+
+<!-- Wallet Modal -->
+<div id="walletModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+  <div class="card" style="width:90%; max-width:400px;">
+    <h3>Yeni Cüzdan Ekle</h3>
+    <input id="newWalletName" type="text" placeholder="Cüzdan Adı (Örn: Enpara)" style="width:100%; margin-bottom:10px;">
+    <select id="newWalletType" style="width:100%; margin-bottom:15px;">
+      <option value="cash">💵 Nakit</option>
+      <option value="bank">🏦 Banka Hesabı</option>
+      <option value="credit">💳 Kredi Kartı</option>
+      <option value="crypto">🪙 Kripto</option>
+    </select>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-primary" style="flex:1;" onclick="saveWallet()">Kaydet</button>
+      <button class="btn-muted" style="flex:1;" onclick="closeWalletModal()">İptal</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
 
