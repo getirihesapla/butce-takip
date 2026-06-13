@@ -986,17 +986,20 @@ function calculateAndRender(dataList = transactions){
     const amt = Math.abs(Number(t.amount));
     
     if (t.type === 'transfer') {
-      if(wMap[t.walletId]) wMap[t.walletId].balance -= amt;
-      if(wMap[t.walletToId]) wMap[t.walletToId].balance += amt;
+      const wFrom = wMap[t.walletId] ? t.walletId : 'default';
+      const wTo = wMap[t.walletToId] ? t.walletToId : 'default';
+      if(wMap[wFrom]) wMap[wFrom].balance -= amt;
+      if(wMap[wTo]) wMap[wTo].balance += amt;
       continue; // Skip global income/expense stats for transfers
     }
 
+    const wTarget = wMap[t.walletId] ? t.walletId : 'default';
     if(t.type === 'income') {
       totalIncome = parseFloat((totalIncome + amt).toFixed(2));
-      if(wMap[t.walletId]) wMap[t.walletId].balance += amt;
+      if(wMap[wTarget]) wMap[wTarget].balance += amt;
     } else {
       totalExpense = parseFloat((totalExpense + amt).toFixed(2));
-      if(wMap[t.walletId]) wMap[t.walletId].balance -= amt;
+      if(wMap[wTarget]) wMap[wTarget].balance -= amt;
     }
   }
   
