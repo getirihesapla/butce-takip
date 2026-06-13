@@ -1,6 +1,6 @@
 {
   "name": "Bütçe Takip",
-  "short_name": "Bütçe",
+  "short_name": "Bütçe Takip",
   "description": "Gelir ve giderlerinizi dinamik kategorilerle takip edin.",
   "start_url": "/",
   "display": "standalone",
