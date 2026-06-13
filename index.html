@@ -1294,19 +1294,38 @@ window.logout = function(){
 };
 
 window.clearAll = async function(){ 
-  if(!checkAuth()) return;
-  if(!confirm('Tüm veriler (İşlemler, Bütçeler ve Kategoriler) buluttan tamamen SİLİNECEK. Emin misiniz?')) return; 
-  const snap = await getDocs(collection(db, "users", currentUser.uid, "transactions"));
-  snap.forEach(async (d) => { await deleteDoc(d.ref); });
-  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), {});
-  await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: {income:[], expense:[]} }, { merge: true });
-  alert('Tüm bulut verileri temizlendi.'); 
+  if(!confirm('Tüm veriler (İşlemler, Hedefler, Bütçeler ve Kategoriler) tamamen SİLİNECEK. Emin misiniz?')) return; 
+  
+  localStorage.removeItem('transactions');
+  localStorage.removeItem('financialGoals');
+  localStorage.removeItem('customCategories');
+  localStorage.removeItem('budgets');
+  
+  transactions = [];
+  financialGoals = [];
+  customCategories = {income:[], expense:[]};
+  budgets = {};
+  
+  updateUI();
+  if (typeof drawCharts === 'function') drawCharts([]);
+  
+  if (currentUser) {
+    try {
+      const snap = await getDocs(collection(db, "users", currentUser.uid, "transactions"));
+      snap.forEach(async (d) => { await deleteDoc(d.ref); });
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), {});
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: {income:[], expense:[]}, goals: [] }, { merge: true });
+    } catch(e) { console.error("Firebase clear error:", e); }
+  }
+  
+  alert('Tüm veriler temizlendi.'); 
 };
 
 function updateUI(){
   if (typeof applyPrivacyMask === 'function') applyPrivacyMask();
   renderTransactions();
   calculateAndRender();
+  if(window.renderGoals) window.renderGoals();
   populateCategorySelects();
   checkBudgetAlerts();
 }
