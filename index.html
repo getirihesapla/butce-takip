@@ -17,9 +17,9 @@
   .btn-privacy:hover { opacity: 0.7; }
   /* Masking is now done via text replacement (*****) */
   .alert-card { position: relative; padding: 12px; margin-bottom: 8px; border-radius: 8px; background: var(--bg-card); box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-size: 0.9rem; }
-  .alert-critical { border-left: 4px solid #ff7675; }
-  .alert-warning { border-left: 4px solid #fdcb6e; }
-  .alert-info { border-left: 4px solid #6c5ce7; }
+  .alert-critical { border-left: 4px solid #ef4444; }
+  .alert-warning { border-left: 4px solid #f59e0b; }
+  .alert-info { border-left: 4px solid #3b82f6; }
   .alert-close { position: absolute; top: 8px; right: 8px; cursor: pointer; color: var(--text-muted); font-size: 14px; font-weight: bold; }
   .alert-close:hover { color: var(--text-main); }
 /* ---------------- Theme variables ---------------- */
@@ -957,7 +957,7 @@ function checkBudgetAlerts() {
   let alertIdCounter = 0;
   const nowYM = new Date().toISOString().slice(0,7);
   
-  // Rule 1: Category Budget Thresholds
+  // Rule 1: Category Limits
   for(const cat in budgets){
     const limit = budgets[cat];
     const spent = transactions.filter(t=>t.type==='expense' && t.isoDate && t.isoDate.slice(0,7) === nowYM && t.category===cat).reduce((s,t)=>parseFloat((s+Math.abs(t.amount)).toFixed(2)),0);
@@ -970,34 +970,34 @@ function checkBudgetAlerts() {
     }
   }
 
-  // Rule 2: Total Balance / Monthly Debt Alert
-  const monthTx = transactions.filter(t=> t.isoDate && t.isoDate.slice(0,7) === nowYM);
-  let mInc = 0, mExp = 0;
-  for(const t of monthTx) {
-    if(t.type === 'income') mInc += Number(t.amount);
-    else mExp += Math.abs(Number(t.amount));
-  }
-  if (mExp > mInc && mInc > 0) {
-    msgs.push({ type: 'critical', text: `Kritik: Aylık toplam gideriniz, aylık gelirinizi aştı!`, id: 'alert-' + (alertIdCounter++) });
-  }
-
-  // Rule 3: Upcoming Recurring Payments
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const threeDaysLater = new Date(today);
-  threeDaysLater.setDate(today.getDate() + 3);
-
+  // Rule 2: Upcoming Recurring Bills
+  const recurringCategories = ['Kira', 'Fatura', 'Abonelik', 'Kredi'];
+  const recurringItems = {};
   for (const t of transactions) {
-    if (t.type === 'expense' && t.isoDate) {
-      const txDate = new Date(t.isoDate);
-      txDate.setHours(0,0,0,0);
-      if (txDate > today && txDate <= threeDaysLater) {
-        msgs.push({ type: 'info', text: `Hatırlatıcı: ${t.description} ödemeniz 3 gün içinde gerçekleşecek.`, id: 'alert-' + (alertIdCounter++) });
+    if (t.type === 'expense' && recurringCategories.includes(t.category) && t.isoDate) {
+      const day = parseInt(t.isoDate.split('-')[2], 10);
+      if (!recurringItems[t.description]) {
+        recurringItems[t.description] = day;
       }
     }
   }
 
-  // Rendering
+  const today = new Date();
+  const currentDay = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  
+  for (const [desc, day] of Object.entries(recurringItems)) {
+    let daysUntil = day - currentDay;
+    if (daysUntil < 0) daysUntil += daysInMonth;
+    
+    const paidThisMonth = transactions.some(t => t.description === desc && t.isoDate.startsWith(nowYM));
+    if (!paidThisMonth && daysUntil >= 0 && daysUntil <= 3) {
+      const dayText = daysUntil === 0 ? 'Bugün' : `${daysUntil} gün içinde`;
+      msgs.push({ type: 'info', text: `Hatırlatıcı: Düzenli "${desc}" ödemeniz ${dayText} gerçekleşecek.`, id: 'alert-' + (alertIdCounter++) });
+    }
+  }
+
+  // Rendering DOM Injector
   if (msgs.length === 0) {
     alertsEl.innerHTML = '<div class="small" style="padding:12px; text-align:center;">Henüz bildirim yok.</div>';
   } else {
