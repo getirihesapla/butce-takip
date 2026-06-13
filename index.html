@@ -555,7 +555,7 @@ let balance = 0;
 let editingId = null;
 let exchangeRates = {TRY: 1, USD: 32.50, EUR: 35.20, GBP: 41.50, GAU: 2450.00};
 let customCategories = {income:[], expense:[]};
-let financialGoals = [];
+let financialGoals = JSON.parse(localStorage.getItem('financialGoals')) || [];
 
 let app, auth, db, provider;
 let unsubscribeTransactions = null;
@@ -1340,6 +1340,7 @@ window.useCustomCategory = function(type,name){
 
 /* ---------- Financial Goals ---------- */
 window.saveGoals = async function() {
+  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
   if (!checkAuth()) return;
   await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { goals: financialGoals }, { merge: true });
 };
@@ -1459,6 +1460,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   dateEl.value = new Date().toISOString().slice(0,10);
   populateCategorySelects();
   renderCustomCategoryList();
+  if(window.renderGoals) window.renderGoals();
   await fetchExchangeRates();
   if (typeof updateApp === 'function') updateApp(); else updateUI();
 });
