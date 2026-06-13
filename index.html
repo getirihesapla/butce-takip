@@ -771,15 +771,20 @@ if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   provider = new GoogleAuthProvider();
   
   onAuthStateChanged(auth, (user) => {
-    document.getElementById('loadingCard').style.display = 'none';
     if (user) {
       currentUser = user;
+      document.getElementById('loadingCard').style.display = 'none';
+      document.getElementById('loginCard').style.display = 'none';
+      appEl.style.display = 'flex';
+      document.getElementById('profileMenuContainer').style.display = 'block';
       
+      const savedAvatar = localStorage.getItem('user_profile_avatar');
+      document.getElementById('userAvatarDisplay').src = savedAvatar || user.photoURL || 'https://via.placeholder.com/32';
+      document.getElementById('userName').textContent = user.displayName || user.email;
+      
+      // Load user's local data in case Firebase is slow or rules block access
       transactions = loadLocal('transactions', []);
       budgets = loadLocal('budgets', {});
-      isPrivacyActive = loadLocal('privacyMode', false);
-      customCategories = loadLocal('customCategories', {income:[], expense:[]});
-      financialGoals = loadLocal('financialGoals', []);
       wallets = loadLocal('wallets', [{id: 'default', name: 'Nakit', type: 'cash', balance: 0}]);
       subscriptions = loadLocal('subscriptions', []);
       
@@ -790,6 +795,7 @@ if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
       startListeners(user.uid);
     } else {
       currentUser = null;
+      document.getElementById('loadingCard').style.display = 'none';
       window.handleGoogleLogout();
       stopListeners();
     }
@@ -818,6 +824,9 @@ function startListeners(uid) {
     renderCustomCategoryList();
     window.renderGoals();
     if(window.checkAndRunSubscriptions) window.checkAndRunSubscriptions();
+    calculateAndRender();
+  }, (error) => {
+    console.warn("Settings sync error (Check Firebase Rules):", error);
     calculateAndRender();
   });
 
@@ -848,6 +857,11 @@ function startListeners(uid) {
     saveLocal('transactions', transactions);
     applyFilters();
     calculateAndRender();
+  }, (error) => {
+    console.warn("Transactions sync error (Check Firebase Rules):", error);
+    // Continue with local transactions
+    applyFilters();
+    calculateAndRender();
   });
 
   unsubscribeBudgets = onSnapshot(doc(db, "users", uid, "settings", "budgets"), (snap) => {
@@ -856,6 +870,9 @@ function startListeners(uid) {
     } else {
       budgets = {};
     }
+    calculateAndRender();
+  }, (error) => {
+    console.warn("Budgets sync error:", error);
     calculateAndRender();
   });
 }
