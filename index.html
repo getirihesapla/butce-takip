@@ -175,8 +175,52 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
 @media(max-width:900px){
   .grid{grid-template-columns:1fr;align-items:stretch}
   .controls{flex-direction:row;flex-wrap:wrap}
-  .topbar{flex-direction:column;align-items:flex-start}
+  .topbar{flex-direction:column;align-items:flex-start;display:none !important;} /* Hide old topbar on mobile in favor of navbar */
 }
+
+/* Sidebar & Navbar */
+.top-navbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border-color);
+  position: sticky; top: 0; z-index: 100;
+}
+.menu-btn {
+  background: none; border: none; color: var(--text-main); font-size: 1.5rem; padding: 0; display:flex; align-items:center; justify-content:center;
+}
+.sidebar-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 998;
+  opacity: 0; visibility: hidden; transition: all 0.3s ease;
+}
+.sidebar-overlay.active { opacity: 1; visibility: visible; }
+.sidebar {
+  position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+  background: var(--bg-card); z-index: 999;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+  display: flex; flex-direction: column;
+}
+.sidebar.active { transform: translateX(280px); }
+.sidebar-header {
+  padding: 20px; border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.sidebar-header h2 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+.close-menu-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-muted); padding: 0; }
+.sidebar-menu { list-style: none; padding: 0; margin: 0; flex: 1; overflow-y: auto; }
+.sidebar-menu li {
+  padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-size: 1.05rem; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  color: var(--text-main); transition: background 0.2s; border-left: 4px solid transparent;
+}
+:root[data-theme="dark"] .sidebar-menu li { border-bottom: 1px solid rgba(255,255,255,0.05); }
+.sidebar-menu li:hover, .sidebar-menu li.active-menu {
+  background: rgba(59, 130, 246, 0.1); color: var(--primary); border-left-color: var(--primary);
+}
+.view-section { display: none; animation: fadeIn 0.3s ease; }
+.view-section.active { display: flex; flex-direction: column; gap: 20px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* small utilities */
 .small{font-size:0.85rem;color:var(--text-muted)}
@@ -280,6 +324,36 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
 </head>
 <body>
 
+<!-- Mobile Navbar -->
+<div class="top-navbar" id="topNavbar">
+  <button class="menu-btn" onclick="openMenu()">
+    <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+  </button>
+  <div style="font-weight:bold; font-size:1.2rem; display:flex; align-items:center; gap:8px; color:var(--primary);">
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499L12.136.326zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484L5.562 3zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-13z"/></svg>
+    Bütçe Takip
+  </div>
+  <div style="width:24px;"></div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMenu()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <svg width="24" height="24" fill="var(--primary)" viewBox="0 0 16 16"><path d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499L12.136.326zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484L5.562 3zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-13z"/></svg>
+      <h2>Bütçe Takip</h2>
+    </div>
+    <button class="close-menu-btn" onclick="closeMenu()">✖</button>
+  </div>
+  <ul class="sidebar-menu">
+    <li class="active-menu" onclick="switchView('dashboard', this)">🏠 Ana Sayfa</li>
+    <li onclick="switchView('wallets', this)">💳 Cüzdanlar</li>
+    <li onclick="switchView('reports', this)">📊 İşlem Geçmişi</li>
+    <li onclick="switchView('settings', this)">⚙️ Ayarlar & Yönetim</li>
+  </ul>
+</div>
+
 <div class="container" id="root">
   <div class="topbar">
     <div class="brand">
@@ -350,7 +424,9 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
   </div>
 
   <div id="app" style="display:none">
-    <div class="balance card" style="display:flex; flex-direction:column; gap:16px;">
+    <!-- VIEW: DASHBOARD -->
+    <div id="view-dashboard" class="view-section active">
+      <div class="balance card" style="display:flex; flex-direction:column; gap:16px;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
         <div style="display:flex; align-items:center; gap:8px;">
           <div style="font-size:1.1rem; color:var(--text-main);">Toplam Bakiye:</div>
@@ -391,9 +467,116 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
       <span class="right small" id="lastSync" style="align-self:flex-end;">Kurlar: -</span>
     </div>
 
-    <div class="grid" style="margin-top:12px">
-      <!-- Left: data & budget -->
-      <div class="card">
+    <!-- MIDDLE CARD (Form + Charts) MOVED TO DASHBOARD -->
+    <div class="card" id="transactionFormCard">
+      <h3 class="section-title">Yeni İşlem / Raporlar</h3>
+      
+      <!-- Akıllı Ekle (Smart Input) -->
+      <div style="display:flex; gap:8px; margin-bottom:16px; background:rgba(59, 130, 246, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(59, 130, 246, 0.2);">
+        <input id="smartInput" placeholder="Örn: Dün migrostan 500 tl alışveriş yaptım" style="flex:1; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px 12px; background:var(--bg-body); color:var(--text-main); outline:none;" onkeypress="if(event.key==='Enter') parseSmartInput()">
+        <button class="btn-primary" style="padding:8px 16px; display:flex; align-items:center; gap:6px; background:#3b82f6;" onclick="parseSmartInput()">
+          <span style="font-size:1.1rem">🪄</span> Çözümle
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:12px;">
+        <input id="desc" placeholder="Açıklama" style="grid-column: 1 / -1;">
+        <input id="date" type="date">
+        <input id="amount" type="number" placeholder="Miktar">
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:12px; margin-bottom:12px;">
+        <select id="type" onchange="toggleTransferFields()">
+          <option value="income">Gelir</option>
+          <option value="expense">Gider</option>
+          <option value="transfer">Transfer</option>
+        </select>
+        <select id="walletInput" title="İşlemin yapılacağı cüzdan"></select>
+        <select id="walletToInput" title="Alıcı cüzdan" style="display:none;"></select>
+        <select id="categoryInput"></select>
+        <select id="inputCurrency">
+          <option value="TRY">TRY</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+          <option value="GAU">🪙 ALTIN (Gram)</option>
+        </select>
+        <select id="paymentType" onchange="document.getElementById('installment').style.display = this.value === 'taksit' ? 'inline-block' : 'none'">
+          <option value="pesin">Peşin (1)</option>
+          <option value="taksit">Taksitlendir</option>
+          <option value="abonelik">🔁 Abonelik (Her Ay)</option>
+        </select>
+        <input id="installment" type="number" min="2" max="120" placeholder="Kaç Taksit?" style="display:none;">
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <button class="btn-muted" style="font-size:0.8rem; padding: 4px 8px;" onclick="window.openSubscriptionsModal()">📋 Aboneliklerim</button>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <button class="btn-primary" style="flex:1;" onclick="window.addTransaction()">İşlemi Kaydet</button>
+        <button class="btn-muted" onclick="window.cancelEdit()" id="cancelEdit" style="display:none; flex:1;">İptal</button>
+      </div>
+
+      <hr>
+
+      <h4 class="small" style="display:flex;align-items:center;">
+        <svg class="svg-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        Özet
+      </h4>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:70px;font-size:0.9rem;color:var(--muted)">Gelir</div>
+            <div class="chart-bar"><div class="fill" id="incomeFill" style="width:0%;background:var(--success)"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <div style="width:70px;font-size:0.9rem;color:var(--muted)">Gider</div>
+            <div class="chart-bar"><div class="fill" id="expenseFill" style="width:0%;background:var(--danger)"></div></div>
+          </div>
+        </div>
+        <div style="width:190px;text-align:center">
+          <div class="small">Net</div>
+          <div id="net" class="privacy-mask" style="font-weight:800;font-size:1.1rem">0.00 TL</div>
+          <div style="margin-top:8px">
+            <button class="btn-primary" onclick="generatePdf()">PDF İndir</button>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div style="text-align:center; padding:10px;">
+        <p class="small" style="margin-bottom:12px; font-weight:600;">Kategori Harcama Payı</p>
+        <div style="height:220px; width:100%; position:relative;">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <p class="small" style="margin-top:24px; margin-bottom:12px; font-weight:600;">Aylık Trend</p>
+        <div style="height:220px; width:100%; position:relative;">
+          <canvas id="lineChart"></canvas>
+        </div>
+      </div>
+    </div> <!-- END form card -->
+  </div> <!-- END view-dashboard -->
+
+  <!-- VIEW: WALLETS -->
+  <div id="view-wallets" class="view-section">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <h4 style="margin:0; font-size:1.1rem; color:var(--text-main);">Tüm Cüzdanlarım</h4>
+        <button class="btn-muted" style="font-size:0.8rem; padding: 6px 12px;" onclick="window.openWalletModal()">+ Yeni Cüzdan</button>
+      </div>
+      <div id="walletList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:12px; padding-bottom:4px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div> <!-- END view-wallets -->
+
+  <!-- VIEW: SETTINGS -->
+  <div id="view-settings" class="view-section">
+    <!-- Left: data & budget -->
+    <div class="card">
         <h3 class="section-title">
           <svg class="svg-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -567,7 +750,10 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
         </div>
 
       </div>
+  </div> <!-- END view-settings -->
 
+  <!-- VIEW: REPORTS -->
+  <div id="view-reports" class="view-section">
       <!-- Right: filters & transactions -->
       <div style="display:flex; flex-direction:column; gap:24px;">
         
@@ -624,6 +810,28 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
 /* ===========================
    Bütçe Takip - Cloud Sync (Firestore)
    =========================== */
+
+window.switchView = function(viewId, element) {
+  document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById('view-' + viewId);
+  if (target) target.classList.add('active');
+  
+  if (element) {
+    document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active-menu'));
+    element.classList.add('active-menu');
+  }
+  window.closeMenu();
+};
+
+window.openMenu = function() {
+  document.getElementById('sidebar').classList.add('active');
+  document.getElementById('sidebarOverlay').classList.add('active');
+};
+
+window.closeMenu = function() {
+  document.getElementById('sidebar').classList.remove('active');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+};
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
