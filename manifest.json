@@ -1,0 +1,17 @@
+{
+  "name": "Bütçe Takip",
+  "short_name": "Bütçe",
+  "description": "Gelir ve giderlerinizi dinamik kategorilerle takip edin.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
