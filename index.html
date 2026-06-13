@@ -880,7 +880,12 @@ window.addTransaction = async function(){
       description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now(),
       originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate
     };
-    await updateDoc(doc(db, "users", currentUser.uid, "transactions", editingId), txData);
+    const idx = transactions.findIndex(t => t.id === editingId);
+    if(idx !== -1) transactions[idx] = { id: editingId, ...txData };
+    
+    if (currentUser) {
+      try { await updateDoc(doc(db, "users", currentUser.uid, "transactions", editingId), txData); } catch(e) { console.error(e); }
+    }
     editingId = null;
     document.getElementById('cancelEdit').style.display='none';
   } else {
@@ -893,7 +898,10 @@ window.addTransaction = async function(){
         description:desc, amount: totalAmount, type:typ, category:cat, isoDate:dateVal, createdAt: Date.now(),
         originalCurrency: cur, originalAmount: totalOriginalAmount, exchangeRate: currentRate
       };
-      await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData);
+      transactions.push({ id: 'local_' + Date.now(), ...txData });
+      if (currentUser) {
+        try { await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData); } catch(e) { console.error(e); }
+      }
     } else {
       const monthlyAmountStr = (totalAmount / installmentCount).toFixed(2);
       const monthlyAmount = parseFloat(monthlyAmountStr);
@@ -901,7 +909,6 @@ window.addTransaction = async function(){
       const monthlyOrigAmount = parseFloat(monthlyOrigStr);
       let [year, month, day] = dateVal.split('-').map(Number);
       
-      const promises = [];
       for (let i = 0; i < installmentCount; i++) {
         let d = new Date(year, month - 1 + i, day);
         const y = d.getFullYear();
@@ -920,11 +927,16 @@ window.addTransaction = async function(){
           originalAmount: monthlyOrigAmount,
           exchangeRate: currentRate
         };
-        promises.push(addDoc(collection(db, "users", currentUser.uid, "transactions"), txData));
+        transactions.push({ id: 'local_' + (Date.now() + i), ...txData });
+        if (currentUser) {
+          try { await addDoc(collection(db, "users", currentUser.uid, "transactions"), txData); } catch(e) { console.error(e); }
+        }
       }
-      await Promise.all(promises);
     }
   }
+  
+  localStorage.setItem('transactions', JSON.stringify(transactions));
+  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
   descEl.value=''; amountEl.value=''; categoryInput.value=''; dateEl.value = new Date().toISOString().slice(0,10);
   const instEl = document.getElementById('installment');
   if(instEl) { instEl.value = ''; instEl.style.display = 'none'; }
@@ -1408,17 +1420,18 @@ window.deleteGoal = async function(id, catName) {
 window.renderGoals = function() {
   const container = document.getElementById('goalsListContainer');
   if(!container) return;
-  let html = '';
-  
-  if (financialGoals.length === 0) {
-    html = `<div class="small" style="text-align:center; padding:12px;">Henüz birikim hedefi eklemediniz.</div>`;
-    container.innerHTML = html;
+  if(financialGoals.length === 0) {
+    container.innerHTML = `<div class="small" style="color:var(--text-muted);">Henüz birikim hedefi eklemediniz.</div>`;
     return;
   }
   
-  const savedAmounts = {};
-  for(const t of transactions) {
-    if(t.category && t.category.startsWith('[Hedef] ')) {
+  let html = '';
+  
+  financialGoals.forEach(goal => {
+    let currentSavedAmount = 0;
+    const matchingTransactions = transactions.filter(t => t.category && t.category.includes(goal.name));
+    
+    matchingTransactions.forEach(t => {
       let amtRaw = t.originalAmount !== undefined ? t.originalAmount : t.amount;
       amtRaw = Math.abs(Number(amtRaw));
       const cur = t.originalCurrency || 'TRY';
@@ -1427,34 +1440,31 @@ window.renderGoals = function() {
          const r = exchangeRates[cur];
          if (r && r !== 0) amtTry = amtRaw * r;
       }
-      savedAmounts[t.category] = (savedAmounts[t.category] || 0) + amtTry;
-    }
-  }
-  
-  financialGoals.forEach(g => {
-    const savedTry = savedAmounts[g.categoryName] || 0;
-    let progress = (savedTry / g.targetAmount) * 100;
-    if (progress > 100) progress = 100;
+      currentSavedAmount += amtTry;
+    });
     
-    let remainingAmount = g.targetAmount - savedTry;
+    let progressPercent = (currentSavedAmount / goal.targetAmount) * 100;
+    progressPercent = Math.min(progressPercent, 100);
+    
+    let remainingAmount = goal.targetAmount - currentSavedAmount;
     if (remainingAmount < 0) remainingAmount = 0;
     
     html += `
     <div class="goal-item">
       <div class="goal-header">
-        <strong style="color:var(--text-main); font-size:0.95rem;">${g.name}</strong>
-        <span class="small" style="font-weight:600; cursor:pointer; color:var(--danger);" onclick="window.deleteGoal('${g.id}', '${g.categoryName}')">X</span>
+        <strong style="color:var(--text-main); font-size:0.95rem;">${goal.name}</strong>
+        <span class="small" style="font-weight:600; cursor:pointer; color:var(--danger);" onclick="window.deleteGoal('${goal.id}', '${goal.categoryName}')">X</span>
       </div>
       <div class="small" style="display:flex; justify-content:space-between; margin-top:8px;">
-        <span style="font-weight:700;">${formatTL(savedTry)}</span>
-        <span style="color:var(--text-muted);">${formatTL(g.targetAmount)}</span>
+        <span style="font-weight:700;">${formatTL(currentSavedAmount)}</span>
+        <span style="color:var(--text-muted);">${formatTL(goal.targetAmount)}</span>
       </div>
       <div class="progress-container">
-        <div class="progress-fill" style="width: ${progress}%"></div>
+        <div class="progress-fill" style="width: ${progressPercent}%;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
         <span class="small" style="color:var(--text-muted); font-size:0.75rem;">Kalan: ${formatTL(remainingAmount)}</span>
-        <span style="font-size:0.75rem; color:var(--gold-accent); font-weight:700;">%${progress.toFixed(1)}</span>
+        <span style="font-size:0.75rem; color:var(--gold-accent); font-weight:700;">%${progressPercent.toFixed(1)}</span>
       </div>
     </div>`;
   });
