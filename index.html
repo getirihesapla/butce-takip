@@ -1367,8 +1367,11 @@ window.addGoal = async function() {
   
   if (!customCategories.expense.includes(categoryName)) {
     customCategories.expense.push(categoryName);
-    await window.saveCustomCategories();
   }
+  if (!customCategories.income.includes(categoryName)) {
+    customCategories.income.push(categoryName);
+  }
+  await window.saveCustomCategories();
   
   document.getElementById('goalName').value = '';
   document.getElementById('goalTarget').value = '';
@@ -1397,7 +1400,7 @@ window.renderGoals = function() {
   
   const savedAmounts = {};
   for(const t of transactions) {
-    if(t.type === 'expense' && t.category && t.category.startsWith('[Hedef] ')) {
+    if(t.category && t.category.startsWith('[Hedef] ')) {
       let amtRaw = t.originalAmount !== undefined ? t.originalAmount : t.amount;
       amtRaw = Math.abs(Number(amtRaw));
       const cur = t.originalCurrency || 'TRY';
