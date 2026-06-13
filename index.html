@@ -813,18 +813,30 @@ function startListeners(uid) {
   });
 
   unsubscribeTransactions = onSnapshot(collection(db, "users", uid, "transactions"), (snap) => {
+    const serverTxIds = new Set();
     const newTx = [];
     let calcBalance = 0;
+    
     snap.forEach(d => {
       const t = d.data();
+      serverTxIds.add(d.id);
       newTx.push({ id: d.id, ...t });
       calcBalance = parseFloat((calcBalance + Number(t.amount)).toFixed(2));
     });
-    if (newTx.length > 0 || snap.metadata.hasPendingWrites || (snap.empty && transactions.length === 0)) {
-      transactions = newTx;
-      balance = calcBalance;
-      saveLocal('transactions', transactions);
+    
+    // Offline-to-online sync: find local transactions not present in Firebase
+    const localOnlyTx = transactions.filter(t => !serverTxIds.has(t.id) && String(t.id).startsWith('local_'));
+    
+    if (localOnlyTx.length > 0 && !snap.metadata.hasPendingWrites) {
+      localOnlyTx.forEach(t => {
+        setDoc(doc(db, "users", uid, "transactions", t.id), t).catch(err => console.error("Sync err:", err));
+      });
+      return; // Wait for the next snapshot to include these uploaded transactions
     }
+    
+    transactions = newTx;
+    balance = calcBalance;
+    saveLocal('transactions', transactions);
     applyFilters();
     calculateAndRender();
   });
