@@ -1145,23 +1145,35 @@ window.parseSmartInput = function() {
   }
 
   // 3. Category & Type Mapping
-  const incomeKeywords = ['maaş', 'ücret', 'gelir', 'gönderdi', 'yattı'];
-  const marketKeywords = ['market', 'migros', 'şok', 'a101', 'bim', 'carrefour', 'alışveriş', 'bakkal', 'manav', 'kasap'];
-  const foodKeywords = ['yemek', 'starbucks', 'kahve', 'restoran', 'lokanta', 'pide', 'kebap', 'pizza', 'burger'];
-  const transportKeywords = ['benzin', 'akaryakıt', 'petrol', 'shell', 'opet', 'bp', 'taksi', 'otobüs', 'uçak', 'bilet', 'ulaşım', 'metro'];
-  const billKeywords = ['fatura', 'elektrik', 'su', 'doğalgaz', 'internet', 'telefon', 'turkcell', 'vodafone', 'ttnet', 'telekom'];
+  const incomeKeywords = ['maaş', 'ücret', 'gelir', 'gönderdi', 'yattı', 'kira geldi', 'faiz', 'bonus', 'temettü'];
+  const marketKeywords = ['market', 'migros', 'şok', 'a101', 'bim', 'carrefour', 'alışveriş', 'bakkal', 'manav', 'kasap', 'gıda'];
+  const foodKeywords = ['yemek', 'starbucks', 'kahve', 'restoran', 'lokanta', 'pide', 'kebap', 'pizza', 'burger', 'cafe'];
+  const transportKeywords = ['benzin', 'akaryakıt', 'petrol', 'shell', 'opet', 'bp', 'taksi', 'otobüs', 'uçak', 'bilet', 'ulaşım', 'metro', 'dolmuş', 'tren'];
+  const billKeywords = ['fatura', 'elektrik', 'su', 'doğalgaz', 'internet', 'telefon', 'turkcell', 'vodafone', 'ttnet', 'telekom', 'aidat'];
+  const healthKeywords = ['eczane', 'hastane', 'doktor', 'ilaç', 'sağlık', 'diş'];
+  const clothingKeywords = ['kıyafet', 'elbise', 'ayakkabı', 'lc waikiki', 'mavi', 'zara', 'koton', 'boyner', 'defacto', 'mağaza', 'giyim'];
+  const entertainmentKeywords = ['sinema', 'tiyatro', 'konser', 'netflix', 'spotify', 'oyun', 'steam', 'tatil', 'eğlence'];
+  const educationKeywords = ['okul', 'kitap', 'kurs', 'kırtasiye', 'udemy', 'eğitim'];
+  const rentKeywords = ['kira ödemesi', 'ev kirası', 'kira'];
 
   if (incomeKeywords.some(kw => text.includes(kw))) {
     type = 'income';
-    category = 'Maaş'; // Fallback
-    const cats = ['Maaş', 'Yatırım', 'Diğer Gelir', ...customCategories.filter(c=>c.type==='income').map(c=>c.name)];
+    category = 'Diğer'; 
     if (text.includes('maaş')) category = 'Maaş';
+    else if (text.includes('kira')) category = 'Kira Geliri';
+    else if (text.includes('faiz') || text.includes('temettü')) category = 'Faiz/Temettü';
+    else if (text.includes('bonus')) category = 'Bonus';
   } else {
     type = 'expense';
-    if (marketKeywords.some(kw => text.includes(kw))) category = 'Market / Mutfak';
-    else if (foodKeywords.some(kw => text.includes(kw))) category = 'Yeme-İçme';
-    else if (transportKeywords.some(kw => text.includes(kw))) category = 'Ulaşım / Araç';
-    else if (billKeywords.some(kw => text.includes(kw))) category = 'Fatura / Aidat';
+    if (marketKeywords.some(kw => text.includes(kw)) || foodKeywords.some(kw => text.includes(kw))) category = 'Gıda';
+    else if (transportKeywords.some(kw => text.includes(kw))) category = 'Ulaşım';
+    else if (billKeywords.some(kw => text.includes(kw))) category = 'Fatura';
+    else if (healthKeywords.some(kw => text.includes(kw))) category = 'Sağlık';
+    else if (clothingKeywords.some(kw => text.includes(kw))) category = 'Giyim';
+    else if (entertainmentKeywords.some(kw => text.includes(kw))) category = 'Eğlence';
+    else if (educationKeywords.some(kw => text.includes(kw))) category = 'Eğitim';
+    else if (rentKeywords.some(kw => text.includes(kw))) category = 'Kira';
+    else category = 'Diğer';
   }
 
   // Fill form
