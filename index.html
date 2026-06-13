@@ -349,7 +349,7 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
   <ul class="sidebar-menu">
     <li class="active-menu" onclick="switchView('dashboard', this)">🏠 Ana Sayfa</li>
     <li onclick="switchView('wallets', this)">💳 Cüzdanlar</li>
-    <li onclick="switchView('reports', this)">📊 İşlem Geçmişi</li>
+    <li onclick="switchView('reports', this)">🎯 Birikim Hedefleri</li>
     <li onclick="switchView('settings', this)">⚙️ Ayarlar & Yönetim</li>
   </ul>
 </div>
@@ -558,6 +558,37 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
         </div>
       </div>
     </div> <!-- END form card -->
+
+    <!-- Filters & Transactions Card (Moved from Reports) -->
+    <div class="card" id="filtersCard">
+      <h3 class="section-title">Filtreler & İşlemler</h3>
+      <div class="small">Göster</div>
+      <div style="display:flex;gap:8px;margin:8px 0">
+        <select id="filterCategory" onchange="window.applyFilters()"><option value="all">Tüm Kategoriler</option></select>
+        <select id="filterType" onchange="window.applyFilters()"><option value="all">Tümü</option><option value="income">Gelir</option><option value="expense">Gider</option></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="startDate" type="date" onchange="window.applyFilters()">
+        <input id="endDate" type="date" onchange="window.applyFilters()">
+      </div>
+      <input id="search" placeholder="Açıklamada ara..." oninput="window.applyFilters()" style="margin-bottom:8px">
+
+      <h4 class="small" style="display:flex;align-items:center;">
+        <svg class="svg-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        İşlemler
+      </h4>
+      <ul id="transactionList"></ul>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-muted" onclick="window.clearAll()">Tüm Verileri Temizle</button>
+      </div>
+    </div>
+
   </div> <!-- END view-dashboard -->
 
   <!-- VIEW: WALLETS -->
@@ -772,35 +803,7 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
           <div id="goalsListContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
 
-        <div class="card">
-          <h3 class="section-title">Filtreler & İşlemler</h3>
-          <div class="small">Göster</div>
-          <div style="display:flex;gap:8px;margin:8px 0">
-            <select id="filterCategory" onchange="window.applyFilters()"><option value="all">Tüm Kategoriler</option></select>
-            <select id="filterType" onchange="window.applyFilters()"><option value="all">Tümü</option><option value="income">Gelir</option><option value="expense">Gider</option></select>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input id="startDate" type="date" onchange="window.applyFilters()">
-            <input id="endDate" type="date" onchange="window.applyFilters()">
-          </div>
-          <input id="search" placeholder="Açıklamada ara..." oninput="window.applyFilters()" style="margin-bottom:8px">
-
-          <h4 class="small" style="display:flex;align-items:center;">
-            <svg class="svg-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            İşlemler
-          </h4>
-          <ul id="transactionList"></ul>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn-muted" onclick="window.clearAll()">Tüm Verileri Temizle</button>
-          </div>
-
-        </div>
+        <!-- Filtreler card moved to dashboard -->
       </div>
     </div>
   </div>
