@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let balance = 0;
 let editingId = null;
 let exchangeRates = {TRY: 1, USD: 32.50, EUR: 35.20, GBP: 41.50, GAU: 2450.00};
-let customCategories = {income:[], expense:[]};
+let customCategories = JSON.parse(localStorage.getItem('customCategories')) || {income:[], expense:[]};
 let financialGoals = JSON.parse(localStorage.getItem('financialGoals')) || [];
 
 let app, auth, db, provider;
@@ -1301,6 +1301,7 @@ function updateUI(){
 
 /* ---------- Custom category UI functions ---------- */
 window.saveCustomCategories = async function(){
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
   if(!checkAuth()) return;
   await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: customCategories }, { merge: true });
 };
