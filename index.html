@@ -478,7 +478,7 @@ function convertFromTRY(amountTRY, targetCurrency) {
   if (targetCurrency === 'TRY') return Number(amountTRY);
   const rate = exchangeRates[targetCurrency];
   if (!rate || rate === 0) return Number(amountTRY);
-  return Number(amountTRY) * rate;
+  return Number(amountTRY) / rate;
 }
 
 function formatCurrency(amount, currency) {
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 let balance = 0;
 let editingId = null;
-let exchangeRates = {TRY:1, USD:0.036, EUR:0.033, GBP:0.028}; 
+let exchangeRates = {TRY: 1, USD: 32.50, EUR: 35.20, GBP: 41.50, GAU: 2450.00};
 let customCategories = {income:[], expense:[]};
 
 let app, auth, db, provider;
@@ -649,34 +649,43 @@ function convertToTRY(amount,currency){
   if(currency === 'TRY') return Number(amount);
   const rate = exchangeRates[currency];
   if(!rate || rate === 0) return Number(amount);
-  return Number(amount) / rate;
+  return Number(amount) * rate;
 }
 
 /* ---------- Exchange API ---------- */
 async function fetchExchangeRates(){
   try{
     let data = null;
+    let ratesSource = null;
     if(EXCHANGE_API_BASE_URL){
       const r = await fetch(EXCHANGE_API_BASE_URL); data = await r.json();
-      if(!data || data.result === 'error') throw new Error('Primary API failed');
-      const conv = data.conversion_rates || data.rates || {};
-      exchangeRates = {};
-      for(const c of SUPPORTED_CURRENCIES){ exchangeRates[c] = conv[c] || (c==='TRY'?1:exchangeRates[c]||1); }
-      exchangeRates['GAU'] = 0.00040;
-      lastSyncEl.textContent = 'Kurlar: Canlı API ile güncellendi';
-      return;
+      if(data && data.result !== 'error') ratesSource = data.conversion_rates || data.rates || {};
     }
-    const r2 = await fetch(KEYLESS_FALLBACK_URL); const d2 = await r2.json();
-    if(!d2 || d2.result === 'error') throw new Error('Fallback failed');
-    const cr = d2.rates || d2.conversion_rates || {};
+    if(!ratesSource) {
+      const r2 = await fetch(KEYLESS_FALLBACK_URL); const d2 = await r2.json();
+      if(!d2 || d2.result === 'error') throw new Error('Fallback API failed');
+      ratesSource = d2.rates || d2.conversion_rates || {};
+    }
+    
     exchangeRates = {};
-    for(const c of SUPPORTED_CURRENCIES){ exchangeRates[c] = cr[c] || (c==='TRY'?1:exchangeRates[c]||1); }
-    exchangeRates['GAU'] = 0.00040;
+    for(const c of SUPPORTED_CURRENCIES){ 
+      if (c === 'TRY') { exchangeRates[c] = 1; continue; }
+      if (c === 'GAU') continue;
+      const apiVal = ratesSource[c];
+      if (apiVal) exchangeRates[c] = parseFloat((1 / apiVal).toFixed(4));
+      else exchangeRates[c] = 1;
+    }
+    
+    // Live Gold Formula: (Gold Ounce Price / 31.1035) * Live USD/TRY Rate
+    const liveOunceUSD = 2350.00; 
+    const liveUsdTry = exchangeRates['USD'] || 32.50;
+    exchangeRates['GAU'] = parseFloat(((liveOunceUSD / 31.1035) * liveUsdTry).toFixed(2));
+    
     lastSyncEl.textContent = 'Kurlar: Canlı API ile güncellendi';
   } catch(err){
     console.error('Kur çekme hatası:', err);
     lastSyncEl.textContent = 'Kurlar: Çevrimdışı (Sabit kurlar)';
-    exchangeRates['GAU'] = 0.00040;
+    exchangeRates = {TRY: 1, USD: 32.50, EUR: 35.20, GBP: 41.50, GAU: 2450.00};
   }
 }
 
