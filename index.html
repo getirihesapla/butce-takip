@@ -510,10 +510,28 @@ const EXCHANGE_API_BASE_URL = EXCHANGE_API_KEY && EXCHANGE_API_KEY !== 'YOUR_API
 const KEYLESS_FALLBACK_URL = 'https://open.er-api.com/v6/latest/TRY';
 const SUPPORTED_CURRENCIES = ['TRY','USD','EUR','GBP','GAU'];
 
+/* ---------- Storage Helpers ---------- */
+function getUserKey(baseKey) {
+  const uid = currentUser ? currentUser.uid : 'default';
+  return baseKey + '_' + uid;
+}
+function saveLocal(key, data) {
+  localStorage.setItem(getUserKey(key), JSON.stringify(data));
+}
+function loadLocal(key, defaultData) {
+  try {
+    const item = localStorage.getItem(getUserKey(key));
+    return item ? JSON.parse(item) : defaultData;
+  } catch(e) { return defaultData; }
+}
+function removeLocal(key) {
+  localStorage.removeItem(getUserKey(key));
+}
+
 /* ---------- State ---------- */
-let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
-let isPrivacyActive = JSON.parse(localStorage.getItem('privacyMode')) || false;
+let transactions = loadLocal('transactions', []);
+let budgets = loadLocal('budgets', {});
+let isPrivacyActive = loadLocal('privacyMode', false);
 let globalDisplayCurrency = 'TRY';
 
 window.setGlobalCurrency = function(cur) {
@@ -556,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
       isPrivacyActive = !isPrivacyActive;
-      localStorage.setItem('privacyMode', isPrivacyActive);
+      saveLocal('privacyMode', isPrivacyActive);
       applyPrivacyMask();
       updateUI();
     });
@@ -566,8 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
 let balance = 0;
 let editingId = null;
 let exchangeRates = {TRY: 1, USD: 32.50, EUR: 35.20, GBP: 41.50, GAU: 2450.00};
-let customCategories = JSON.parse(localStorage.getItem('customCategories')) || {income:[], expense:[]};
-let financialGoals = JSON.parse(localStorage.getItem('financialGoals')) || [];
+let customCategories = loadLocal('customCategories', {income:[], expense:[]});
+let financialGoals = loadLocal('financialGoals', []);
 
 let app, auth, db, provider;
 let unsubscribeTransactions = null;
@@ -615,7 +633,15 @@ if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
     document.getElementById('loadingCard').style.display = 'none';
     if (user) {
       currentUser = user;
+      
+      transactions = loadLocal('transactions', []);
+      budgets = loadLocal('budgets', {});
+      isPrivacyActive = loadLocal('privacyMode', false);
+      customCategories = loadLocal('customCategories', {income:[], expense:[]});
+      financialGoals = loadLocal('financialGoals', []);
+      
       window.handleGoogleSuccess(user);
+      updateUI();
       startListeners(user.uid);
     } else {
       currentUser = null;
@@ -653,7 +679,7 @@ function startListeners(uid) {
     if (newTx.length > 0 || snap.metadata.hasPendingWrites || (snap.empty && transactions.length === 0)) {
       transactions = newTx;
       balance = calcBalance;
-      localStorage.setItem('transactions', JSON.stringify(transactions));
+      saveLocal('transactions', transactions);
     }
     applyFilters();
     calculateAndRender();
@@ -814,8 +840,8 @@ function calculateAndRender(dataList = transactions){
   
   if (dataList === transactions) {
     balance = parseFloat((totalIncome - totalExpense).toFixed(2));
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-    localStorage.setItem('budgets', JSON.stringify(budgets));
+    saveLocal('transactions', transactions);
+    saveLocal('budgets', budgets);
   }
 
   const convBal = convertFromTRY(dataList === transactions ? balance : parseFloat((totalIncome - totalExpense).toFixed(2)), globalDisplayCurrency);
@@ -949,7 +975,7 @@ window.addTransaction = async function(){
     }
   }
   
-  localStorage.setItem('transactions', JSON.stringify(transactions));
+  saveLocal('transactions', transactions);
   updateUI();
   
   descEl.value=''; amountEl.value=''; categoryInput.value=''; dateEl.value = new Date().toISOString().slice(0,10);
@@ -984,7 +1010,7 @@ window.removeTx = async function(id){
   if(!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
   
   transactions = transactions.filter(t => t.id !== id);
-  localStorage.setItem('transactions', JSON.stringify(transactions));
+  saveLocal('transactions', transactions);
   
   updateUI();
   
@@ -1073,7 +1099,7 @@ window.setBudget = async function(){
   if(!cat || isNaN(val) || val<=0){ alert('Lütfen geçerli kategori ve pozitif miktar girin.'); return; }
   budgets[cat] = val;
   
-  localStorage.setItem('budgets', JSON.stringify(budgets));
+  saveLocal('budgets', budgets);
   budgetValueEl.value=''; budgetCategorySel.value='';
   
   updateUI();
@@ -1112,7 +1138,7 @@ window.deleteBudget = async function(cat){
   if(!confirm('Bu bütçe silinsin mi?')) return; 
   delete budgets[cat]; 
   
-  localStorage.setItem('budgets', JSON.stringify(budgets));
+  saveLocal('budgets', budgets);
   
   updateUI();
   
@@ -1268,7 +1294,7 @@ window.handleDataImport = function(ev) {
         }
       }
 
-      localStorage.setItem('transactions', JSON.stringify(transactions));
+      saveLocal('transactions', transactions);
       updateUI();
 
       let firebasePromises = [];
@@ -1338,10 +1364,10 @@ window.logout = function(){
 window.clearAll = async function(){ 
   if(!confirm('Tüm veriler (İşlemler, Hedefler, Bütçeler ve Kategoriler) tamamen SİLİNECEK. Emin misiniz?')) return; 
   
-  localStorage.removeItem('transactions');
-  localStorage.removeItem('financialGoals');
-  localStorage.removeItem('customCategories');
-  localStorage.removeItem('budgets');
+  removeLocal('transactions');
+  removeLocal('financialGoals');
+  removeLocal('customCategories');
+  removeLocal('budgets');
   
   transactions = [];
   financialGoals = [];
@@ -1380,7 +1406,7 @@ function updateUI(){
 
 /* ---------- Custom category UI functions ---------- */
 window.saveCustomCategories = async function(){
-  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  saveLocal('customCategories', customCategories);
   if(!checkAuth()) return;
   await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: customCategories }, { merge: true });
 };
@@ -1410,7 +1436,7 @@ window.addCustomCategory = async function(){
   if(customCategories[type].includes(name)){ alert('Bu kategori zaten mevcut.'); return; }
   customCategories[type].push(name);
   
-  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  saveLocal('customCategories', customCategories);
   document.getElementById('newCategoryName').value = '';
   
   updateUI();
@@ -1426,7 +1452,7 @@ window.deleteCustomCategory = async function(type,name){
   if(!confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) return;
   customCategories[type] = customCategories[type].filter(c=>c!==name);
   
-  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  saveLocal('customCategories', customCategories);
   
   updateUI();
   
@@ -1445,7 +1471,7 @@ window.useCustomCategory = function(type,name){
 
 /* ---------- Financial Goals ---------- */
 window.saveGoals = async function() {
-  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
+  saveLocal('financialGoals', financialGoals);
   if (!checkAuth()) return;
   await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { goals: financialGoals }, { merge: true });
 };
@@ -1476,8 +1502,8 @@ window.addGoal = async function() {
     customCategories.income.push(categoryName);
   }
   
-  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
-  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  saveLocal('financialGoals', financialGoals);
+  saveLocal('customCategories', customCategories);
   
   document.getElementById('goalName').value = '';
   document.getElementById('goalTarget').value = '';
@@ -1495,7 +1521,7 @@ window.deleteGoal = async function(id, catName) {
   if(!confirm('Bu hedefi silmek istediğinize emin misiniz?')) return;
   
   financialGoals = financialGoals.filter(g => g.id !== id);
-  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
+  saveLocal('financialGoals', financialGoals);
   
   updateUI();
   
