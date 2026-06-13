@@ -2068,12 +2068,35 @@ window.openWalletModal = function() {
 window.closeWalletModal = function() {
   document.getElementById('walletModal').style.display = 'none';
 };
+window.toggleCreditCardFields = function() {
+  const type = document.getElementById('newWalletType').value;
+  const ccFields = document.getElementById('creditCardFields');
+  if(type === 'credit') {
+    ccFields.style.display = 'flex';
+  } else {
+    ccFields.style.display = 'none';
+  }
+};
+
 window.saveWallet = async function() {
   const name = document.getElementById('newWalletName').value.trim();
   const type = document.getElementById('newWalletType').value;
   if (!name) return alert('Cüzdan adı girin.');
+  
   const newId = 'w_' + Date.now();
-  wallets.push({ id: newId, name: name, type: type, balance: 0 });
+  let walletData = { id: newId, name: name, type: type, balance: 0 };
+  
+  if (type === 'credit') {
+    const limit = parseFloat(document.getElementById('newWalletLimit').value) || 0;
+    const cutOff = parseInt(document.getElementById('newWalletCutoff').value) || 15;
+    const due = parseInt(document.getElementById('newWalletDue').value) || 25;
+    if (limit <= 0) return alert('Lütfen geçerli bir limit girin.');
+    walletData.limit = limit;
+    walletData.cutOffDate = cutOff;
+    walletData.dueDate = due;
+  }
+  
+  wallets.push(walletData);
   saveLocal('wallets', wallets);
   if(checkAuth()) {
     try {
@@ -2081,6 +2104,15 @@ window.saveWallet = async function() {
     } catch(e) { console.error("Firebase sync error for wallets:", e); }
   }
   closeWalletModal();
+  
+  // Clear inputs
+  document.getElementById('newWalletName').value = '';
+  document.getElementById('newWalletType').value = 'cash';
+  document.getElementById('newWalletLimit').value = '';
+  document.getElementById('newWalletCutoff').value = '';
+  document.getElementById('newWalletDue').value = '';
+  toggleCreditCardFields();
+  
   updateUI();
 };
 window.toggleTransferFields = function() {
@@ -2112,14 +2144,45 @@ window.renderWalletList = function() {
   container.innerHTML = '';
   const icons = { 'cash': '💵', 'bank': '🏦', 'credit': '💳', 'crypto': '🪙' };
   wallets.forEach(w => {
-    const balConv = convertFromTRY(w.balance, globalDisplayCurrency);
-    const text = getMaskedOrReal(balConv, globalDisplayCurrency);
-    container.innerHTML += `
-      <div class="wallet-card" style="background:var(--bg-card); border:1px solid var(--border-color); padding:12px; border-radius:12px; min-width:140px; display:flex; flex-direction:column; gap:4px;">
-        <span style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">${icons[w.type]||'💳'} ${w.name}</span>
-        <strong class="privacy-mask" style="font-size:1.1rem; color:${w.balance >= 0 ? 'var(--text-main)' : '#ef4444'};">${text}</strong>
-      </div>
-    `;
+    if (w.type === 'credit') {
+      const debt = w.balance < 0 ? Math.abs(w.balance) : 0;
+      const avail = (w.limit || 0) + w.balance;
+      const pct = (w.limit || 0) > 0 ? Math.min(100, (debt / w.limit) * 100) : 0;
+      
+      const debtConv = convertFromTRY(debt, globalDisplayCurrency);
+      const availConv = convertFromTRY(avail, globalDisplayCurrency);
+      
+      container.innerHTML += `
+        <div class="wallet-card" style="background:var(--bg-card); border:1px solid var(--border-color); padding:12px; border-radius:12px; min-width:200px; display:flex; flex-direction:column; gap:4px;">
+          <span style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; justify-content:space-between; gap:4px;">
+            <span>${icons[w.type]||'💳'} ${w.name}</span>
+            ${w.cutOffDate ? `<span style="font-size:0.75rem; background:var(--bg-main); padding:2px 6px; border-radius:4px;">Kesim: ${w.cutOffDate}.</span>` : ''}
+          </span>
+          
+          <div style="display:flex; justify-content:space-between; margin-top:5px; margin-bottom:-2px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">Güncel Borç</span>
+            <span class="privacy-mask" style="font-size:0.85rem; color:#ef4444; font-weight:600;">${getMaskedOrReal(debtConv, globalDisplayCurrency)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">Kullanılabilir</span>
+            <span class="privacy-mask" style="font-size:0.85rem; color:var(--primary-color); font-weight:600;">${getMaskedOrReal(availConv, globalDisplayCurrency)}</span>
+          </div>
+          
+          <div style="width:100%; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:#ef4444;"></div>
+          </div>
+        </div>
+      `;
+    } else {
+      const balConv = convertFromTRY(w.balance, globalDisplayCurrency);
+      const text = getMaskedOrReal(balConv, globalDisplayCurrency);
+      container.innerHTML += `
+        <div class="wallet-card" style="background:var(--bg-card); border:1px solid var(--border-color); padding:12px; border-radius:12px; min-width:140px; display:flex; flex-direction:column; gap:4px;">
+          <span style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">${icons[w.type]||'💳'} ${w.name}</span>
+          <strong class="privacy-mask" style="font-size:1.1rem; color:${w.balance >= 0 ? 'var(--text-main)' : '#ef4444'};">${text}</strong>
+        </div>
+      `;
+    }
   });
 };
 
@@ -2217,12 +2280,26 @@ window.removeSubscription = async function(id) {
   <div class="card" style="width:90%; max-width:400px;">
     <h3>Yeni Cüzdan Ekle</h3>
     <input id="newWalletName" type="text" placeholder="Cüzdan Adı (Örn: Enpara)" style="width:100%; margin-bottom:10px;">
-    <select id="newWalletType" style="width:100%; margin-bottom:15px;">
+    <select id="newWalletType" style="width:100%; margin-bottom:15px;" onchange="toggleCreditCardFields()">
       <option value="cash">💵 Nakit</option>
       <option value="bank">🏦 Banka Hesabı</option>
       <option value="credit">💳 Kredi Kartı</option>
       <option value="crypto">🪙 Kripto</option>
     </select>
+    <div id="creditCardFields" style="display:none; flex-direction:column; gap:10px; margin-bottom:15px; background:var(--bg-main); padding:10px; border-radius:8px;">
+      <label style="font-size:0.85rem; color:var(--text-muted); margin-bottom:-5px;">Kart Limiti</label>
+      <input id="newWalletLimit" type="number" placeholder="Örn: 50000" style="width:100%;">
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label style="font-size:0.85rem; color:var(--text-muted); margin-bottom:-5px;">Kesim Günü</label>
+          <input id="newWalletCutoff" type="number" min="1" max="31" placeholder="1-31" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:0.85rem; color:var(--text-muted); margin-bottom:-5px;">Son Ödeme Günü</label>
+          <input id="newWalletDue" type="number" min="1" max="31" placeholder="1-31" style="width:100%;">
+        </div>
+      </div>
+    </div>
     <div style="display:flex; gap:10px;">
       <button class="btn-primary" style="flex:1;" onclick="saveWallet()">Kaydet</button>
       <button class="btn-muted" style="flex:1;" onclick="closeWalletModal()">İptal</button>
