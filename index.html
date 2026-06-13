@@ -182,6 +182,92 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
 :root[data-theme="dark"] .spinner { border-color: rgba(255,255,255,0.1); border-left-color: var(--primary); }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+/* Profile Dropdown */
+.profile-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.profile-trigger:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid var(--text-main, #f8fafc);
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 120%;
+    width: 180px;
+    background: #1e293b; /* Premium dark slate */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    
+    /* Animation base state */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+.profile-dropdown-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.profile-dropdown-menu button {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    text-align: left;
+    color: #cbd5e1;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.profile-dropdown-menu button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.profile-dropdown-menu .logout-danger {
+    color: #f87171;
+}
+
+.profile-dropdown-menu .logout-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.dropdown-divider {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 6px 0;
+}
+
 </style>
 </head>
 <body>
@@ -220,9 +306,20 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
       </select>
 
       <button id="themeBtn" class="btn-muted">Tema: Otomatik</button>
-      <div id="userProfile" style="display:none; align-items:center; gap:8px; margin-left:8px;">
-        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
-        <span id="userName" style="font-weight:600; font-size:0.9rem;"></span>
+      
+      <div class="profile-menu-container" id="profileMenuContainer">
+          <div class="profile-trigger" id="profileTrigger">
+              <img id="userAvatarDisplay" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'><circle cx='20' cy='20' r='20' fill='%231e3a8a'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='sans-serif' font-size='16'>?</text></svg>" alt="Profil" class="profile-avatar">
+              <span class="profile-username" id="userName">Kullanıcı</span>
+          </div>
+          
+          <input type="file" id="profile-avatar-input" accept="image/*" style="display: none;">
+          
+          <div class="profile-dropdown-menu" id="profileDropdown">
+              <button id="upload-avatar-trigger" type="button">🖼️ Fotoğraf Değiştir</button>
+              <hr class="dropdown-divider">
+              <button id="navbar-logout-btn" class="logout-danger" type="button" onclick="if(window.logout) window.logout()">❌ Güvenli Çıkış</button>
+          </div>
       </div>
     </div>
   </div>
@@ -474,7 +571,6 @@ input:focus, select:focus { outline: none; border-color: var(--gold-accent); box
           </h4>
           <ul id="transactionList"></ul>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn-muted" onclick="window.logout()">Çıkış</button>
             <button class="btn-muted" onclick="window.clearAll()">Tüm Verileri Temizle</button>
           </div>
 
@@ -1331,15 +1427,17 @@ window.handleDataImport = function(ev) {
 window.handleGoogleSuccess = (user) => {
   loginCard.style.display='none'; 
   appEl.style.display='block'; 
-  document.getElementById('userProfile').style.display='flex';
-  document.getElementById('userPhoto').src = user.photoURL || 'https://via.placeholder.com/32';
+  document.getElementById('profileMenuContainer').style.display='inline-block';
+  
+  const savedAvatar = localStorage.getItem('user_profile_avatar');
+  document.getElementById('userAvatarDisplay').src = savedAvatar || user.photoURL || 'https://via.placeholder.com/32';
   document.getElementById('userName').textContent = user.displayName || user.email;
 };
 
 window.handleGoogleLogout = () => {
   appEl.style.display='none'; 
   loginCard.style.display='block'; 
-  document.getElementById('userProfile').style.display='none';
+  document.getElementById('profileMenuContainer').style.display='none';
 
   // Clear inputs explicitly
   if(descEl) descEl.value = '';
@@ -1604,6 +1702,58 @@ themeBtn.addEventListener('click', ()=>{
   applyTheme(next);
 });
 (function(){ const saved = localStorage.getItem('pf_theme') || 'auto'; applyTheme(saved); })();
+
+/* ---------- Profile Dropdown & Avatar Manager ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialization Lifecycle
+  const storedAvatar = localStorage.getItem('user_profile_avatar');
+  if (storedAvatar) {
+    const avatarNode = document.getElementById('userAvatarDisplay');
+    if (avatarNode) avatarNode.src = storedAvatar;
+  }
+
+  // Dropdown State Manager
+  const profileTrigger = document.getElementById('profileTrigger');
+  const profileDropdown = document.getElementById('profileDropdown');
+  const profileMenuContainer = document.getElementById('profileMenuContainer');
+
+  if (profileTrigger && profileDropdown) {
+    profileTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileDropdown.classList.toggle('active');
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (profileMenuContainer && profileDropdown && !profileMenuContainer.contains(e.target)) {
+      profileDropdown.classList.remove('active');
+    }
+  });
+
+  // Dynamic File Processor
+  const uploadAvatarTrigger = document.getElementById('upload-avatar-trigger');
+  const profileAvatarInput = document.getElementById('profile-avatar-input');
+
+  if (uploadAvatarTrigger && profileAvatarInput) {
+    uploadAvatarTrigger.addEventListener('click', () => {
+      profileAvatarInput.click();
+    });
+
+    profileAvatarInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64String = event.target.result;
+          document.getElementById('userAvatarDisplay').src = base64String;
+          localStorage.setItem('user_profile_avatar', base64String);
+          if (profileDropdown) profileDropdown.classList.remove('active');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+});
 
 /* ---------- Init on load ---------- */
 document.addEventListener('DOMContentLoaded', async ()=>{
