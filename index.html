@@ -675,6 +675,8 @@ function calculateAndRender(){
     if(t.type === 'income') totalIncome = parseFloat((totalIncome + Number(t.amount)).toFixed(2));
     else totalExpense = parseFloat((totalExpense + Math.abs(Number(t.amount))).toFixed(2));
   }
+  balance = parseFloat((totalIncome - totalExpense).toFixed(2));
+  
   const convBal = convertFromTRY(balance, globalDisplayCurrency);
   const convInc = convertFromTRY(totalIncome, globalDisplayCurrency);
   const convExp = convertFromTRY(totalExpense, globalDisplayCurrency);
@@ -1098,7 +1100,6 @@ window.clearAll = async function(){
 
 function updateUI(){
   if (typeof applyPrivacyMask === 'function') applyPrivacyMask();
-  document.getElementById('currentBalance').textContent = formatTL(balance);
   renderTransactions();
   calculateAndRender();
   populateCategorySelects();
@@ -1177,6 +1178,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   populateCategorySelects();
   renderCustomCategoryList();
   await fetchExchangeRates();
+  if (typeof updateApp === 'function') updateApp(); else updateUI();
 });
 
 </script>
