@@ -964,13 +964,13 @@ window.removeTx = async function(id){
   transactions = transactions.filter(t => t.id !== id);
   localStorage.setItem('transactions', JSON.stringify(transactions));
   
+  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
+  
   if (currentUser) {
     try {
       await deleteDoc(doc(db, "users", currentUser.uid, "transactions", id));
     } catch(e) { console.error("Firebase delete error:", e); }
   }
-  
-  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
 };
 
 /* ---------- Filters ---------- */
@@ -1046,13 +1046,21 @@ window.drawCharts = function(expenseByCat, lineData) {
 
 /* ---------- Budgets & Alerts ---------- */
 window.setBudget = async function(){
-  if(!checkAuth()) return;
   const cat = budgetCategorySel.value;
   const val = parseFloat(budgetValueEl.value);
   if(!cat || isNaN(val) || val<=0){ alert('Lütfen geçerli kategori ve pozitif miktar girin.'); return; }
   budgets[cat] = val;
-  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+  
+  localStorage.setItem('budgets', JSON.stringify(budgets));
   budgetValueEl.value=''; budgetCategorySel.value='';
+  
+  updateUI();
+  
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+    } catch(e) { console.error(e); }
+  }
 };
 
 function renderBudgetList(){
@@ -1079,10 +1087,18 @@ function renderBudgetList(){
 
 window.editBudget = function(cat){ budgetCategorySel.value=cat; budgetValueEl.value=budgets[cat]; budgetCategorySel.disabled=true; alert('Yeni miktarı girip Kaydet butonuna tıklayın.'); };
 window.deleteBudget = async function(cat){ 
-  if(!checkAuth()) return;
-  if(!confirm('Silinsin mi?')) return; 
+  if(!confirm('Bu bütçe silinsin mi?')) return; 
   delete budgets[cat]; 
-  await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+  
+  localStorage.setItem('budgets', JSON.stringify(budgets));
+  
+  updateUI();
+  
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "budgets"), budgets);
+    } catch(e) { console.error(e); }
+  }
 };
 
 window.dismissAlert = function(id) {
@@ -1355,22 +1371,38 @@ function renderCustomCategoryList(){
 }
 
 window.addCustomCategory = async function(){
-  if(!checkAuth()) return;
   const name = document.getElementById('newCategoryName').value.trim();
   const type = document.getElementById('newCategoryType').value;
   if(!name){ alert('Kategori adı boş olamaz.'); return; }
   if(!customCategories[type]) customCategories[type] = [];
   if(customCategories[type].includes(name)){ alert('Bu kategori zaten mevcut.'); return; }
   customCategories[type].push(name);
-  await window.saveCustomCategories();
+  
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
   document.getElementById('newCategoryName').value = '';
+  
+  updateUI();
+  
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: customCategories }, { merge: true });
+    } catch(e) { console.error(e); }
+  }
 };
 
 window.deleteCustomCategory = async function(type,name){
-  if(!checkAuth()) return;
-  if(!confirm('Kategori silinsin mi?')) return;
-  customCategories[type] = (customCategories[type]||[]).filter(c=>c!==name);
-  await window.saveCustomCategories();
+  if(!confirm('Bu kategoriyi silmek istediğinize emin misiniz?')) return;
+  customCategories[type] = customCategories[type].filter(c=>c!==name);
+  
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  
+  updateUI();
+  
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { customCategories: customCategories }, { merge: true });
+    } catch(e) { console.error(e); }
+  }
 };
 
 window.useCustomCategory = function(type,name){
@@ -1387,7 +1419,6 @@ window.saveGoals = async function() {
 };
 
 window.addGoal = async function() {
-  if (!checkAuth()) return;
   const name = document.getElementById('goalName').value.trim();
   const target = parseFloat(document.getElementById('goalTarget').value);
   if (!name || isNaN(target) || target <= 0) {
@@ -1412,13 +1443,20 @@ window.addGoal = async function() {
   if (!customCategories.income.includes(categoryName)) {
     customCategories.income.push(categoryName);
   }
-  await window.saveCustomCategories();
+  
+  localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
   
   document.getElementById('goalName').value = '';
   document.getElementById('goalTarget').value = '';
   
-  await window.saveGoals();
-  window.renderGoals();
+  updateUI();
+  
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { goals: financialGoals, customCategories: customCategories }, { merge: true });
+    } catch(e) { console.error(e); }
+  }
 };
 
 window.deleteGoal = async function(id, catName) {
@@ -1427,13 +1465,13 @@ window.deleteGoal = async function(id, catName) {
   financialGoals = financialGoals.filter(g => g.id !== id);
   localStorage.setItem('financialGoals', JSON.stringify(financialGoals));
   
+  updateUI();
+  
   if (currentUser) {
     try {
-      await window.saveGoals();
+      await setDoc(doc(db, "users", currentUser.uid, "settings", "data"), { goals: financialGoals }, { merge: true });
     } catch(e) { console.error("Firebase goal delete error:", e); }
   }
-  
-  if (typeof updateApp === 'function') updateApp(); else { calculateAndRender(); window.renderGoals(); }
 };
 
 window.renderGoals = function() {
